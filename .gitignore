@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+
+# data/disputedesk.db is intentionally NOT ignored – we commit it
