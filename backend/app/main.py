@@ -7,8 +7,9 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.db import get_db
+from backend.app.middleware import ActivityLogMiddleware
 from backend.app.models import HealthResponse
-from backend.app.routers import tools
+from backend.app.routers import api, deadline, recommendation, tools
 
 app = FastAPI(
     title="DisputeDesk Tools API",
@@ -23,7 +24,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Log every /tools/* request to the activity database.
+app.add_middleware(ActivityLogMiddleware)
+
 app.include_router(tools.router, prefix="/tools")
+app.include_router(deadline.router, prefix="/tools")
+app.include_router(recommendation.router, prefix="/tools")
+
+# Dashboard API – NOT under /tools so Orchestrate never sees it.
+app.include_router(api.router, prefix="/api")
 
 
 @app.get(

@@ -164,3 +164,68 @@ GET /tools/merchants/MERCH-008?transaction_id=TXN-000508
   }
 }
 ```
+
+---
+
+### `GET /tools/disputes/{dispute_id}/deadline-check?reason_code=…` — `check_deadline`
+
+Plain-code deadline check: card network 120-day limit (counted from the expected delivery date for 13.1), the 60-day Reg Z / Reg E notice limit, `too_early` for 13.1, and the bank's own response deadlines.
+
+**Example request**
+```
+GET /tools/disputes/DSP-0049/deadline-check?reason_code=13.1
+```
+
+---
+
+## Dashboard API (`/api`)
+
+The `/api` endpoints power the analyst dashboard. They are **not** exposed to watsonx Orchestrate.
+Activity is stored in `data/activity.db` (not committed; created automatically on first request).
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/stats` | Open dispute count, breakdowns by card type / recommendation / reason code, and cases near the 120-day deadline. |
+| `GET /api/cases` | List of disputes with optional filters (`status`, `card_type`, `reason_code`, `recommendation`, `deadline_within_days`, `q`) and `sort`. |
+| `GET /api/cases/{dispute_id}` | Full case page: dispute, transaction, merchant, shipment, friendly-fraud signals, deadline, latest recommendation, and all analyst decisions. |
+| `POST /api/cases/{dispute_id}/decision` | Record an analyst decision (`approve`, `edit`, or `override`). `reason` is required for edit and override. |
+| `GET /api/activity?since=<id>` | Tool calls newer than a given row ID, with a `stage` label (Intake / Evidence / Compliance / Decision). |
+| `GET /api/audit` | Tool calls and analyst decisions merged into a single timeline. |
+| `GET /api/evaluation` | Compare saved recommendations against `data/cases.csv`; returns accuracy and per-case match results. |
+
+**Example – stats**
+```
+GET /api/stats
+```
+```json
+{
+  "open_disputes": 30,
+  "by_card_type": {"credit": 20, "debit": 10},
+  "by_recommendation": {"not_investigated": 30},
+  "by_reason_code": {"not_investigated": 30},
+  "near_deadline": 3
+}
+```
+
+**Example – post decision**
+```
+POST /api/cases/DSP-0021/decision
+{ "decision": "approve", "final_outcome": "file_chargeback", "analyst": "analyst-1" }
+```
+
+---
+
+## Connect to watsonx Orchestrate
+
+Full steps and every value to paste are in `agent/ORCHESTRATE_SETUP.md`.
+
+```bash
+# Terminal 1 – start the API
+uvicorn backend.app.main:app --port 8000
+# Terminal 2 – give it a public HTTPS address
+cloudflared tunnel --url http://localhost:8000
+# Terminal 3 – write the file Orchestrate imports (use the address from Terminal 2)
+python agent/export_openapi.py --server-url https://YOUR-ADDRESS.trycloudflare.com
+```
+
+This creates `agent/disputedesk_tools_openapi.json` (OpenAPI 3.0, 5 tools).
