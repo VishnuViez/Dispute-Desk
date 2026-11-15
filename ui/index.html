@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DisputeDesk – Analyst Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="config.js"></script>
+<style>
+/* ── Reset & variables ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:   #0f2140;
+  --navy2:  #163158;
+  --amber:  #d97706;
+  --amber2: #f59e0b;
+  --bg:     #f4f6f9;
+  --surface:#ffffff;
+  --border: #d1d5db;
+  --text:   #1f2328;
+  --muted:  #57606a;
+  --green:  #16a34a;
+  --red:    #dc2626;
+  --orange: #ea580c;
+  --blue:   #2563eb;
+  --purple: #7c3aed;
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+body { font-family: -apple-system,"Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.6; background:var(--bg); color:var(--text); }
+
+/* ── Header ──────────────────────────────────────────────────────── */
+header { background:var(--navy); color:#fff; padding:0 1.5rem; display:flex; align-items:center; justify-content:space-between; height:52px; }
+header .brand { font-size:1.1rem; font-weight:700; letter-spacing:.3px; }
+header .brand span { color:var(--amber2); }
+.synth-badge { background:var(--amber); color:#fff; font-size:.7rem; font-weight:600; padding:2px 8px; border-radius:3px; letter-spacing:.4px; }
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+nav { background:var(--navy2); display:flex; gap:2px; padding:0 1.5rem; }
+nav button { background:transparent; border:none; color:#9eb8d9; cursor:pointer; padding:.7rem 1.1rem; font-size:.82rem; font-weight:500; border-bottom:3px solid transparent; transition:color .15s, border-color .15s; }
+nav button:hover { color:#fff; }
+nav button.active { color:#fff; border-bottom-color:var(--amber2); }
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+main { max-width:1280px; margin:0 auto; padding:1.5rem; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ── Tiles ───────────────────────────────────────────────────────── */
+.tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.tile { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.2rem; box-shadow:var(--shadow); }
+.tile-label { font-size:.74rem; color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:.4px; }
+.tile-value { font-size:2rem; font-weight:700; line-height:1.2; margin-top:.2rem; }
+.tile-value.red { color:var(--red); }
+.tile-value.amber { color:var(--amber); }
+.tile-value.green { color:var(--green); }
+
+/* ── Charts row ──────────────────────────────────────────────────── */
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+.chart-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.2rem; box-shadow:var(--shadow); }
+.chart-box h3 { font-size:.82rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:.8rem; }
+.chart-box canvas { max-height:220px; }
+
+/* ── Accuracy card ───────────────────────────────────────────────── */
+.accuracy-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.4rem; box-shadow:var(--shadow); display:flex; align-items:center; gap:1.5rem; margin-bottom:1.5rem; }
+.accuracy-pct { font-size:2.4rem; font-weight:700; color:var(--navy); }
+.accuracy-meta { font-size:.82rem; color:var(--muted); }
+.accuracy-meta strong { color:var(--text); }
+
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+.toolbar { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.9rem; align-items:center; }
+.toolbar input[type=text] { flex:1; min-width:160px; padding:.4rem .7rem; border:1px solid var(--border); border-radius:var(--radius); font-size:.82rem; }
+.toolbar select { padding:.4rem .6rem; border:1px solid var(--border); border-radius:var(--radius); font-size:.82rem; background:var(--surface); }
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+table { width:100%; border-collapse:collapse; font-size:.82rem; }
+thead th { background:var(--navy); color:#fff; padding:.55rem .9rem; text-align:left; font-weight:600; cursor:pointer; white-space:nowrap; user-select:none; }
+thead th:hover { background:var(--navy2); }
+thead th .sort-arrow { margin-left:4px; opacity:.5; }
+tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer; }
+tbody tr:hover { background:#f0f4ff; }
+tbody td { padding:.5rem .9rem; }
+tbody tr.selected { background:#e8f0fe; }
+
+/* ── Badges ──────────────────────────────────────────────────────── */
+.badge { display:inline-block; padding:.15rem .5rem; border-radius:3px; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+.badge-credit  { background:#dbeafe; color:#1d4ed8; }
+.badge-debit   { background:#ede9fe; color:#5b21b6; }
+.badge-open    { background:#fef3c7; color:#92400e; }
+.badge-chargeback { background:#dcfce7; color:#15803d; }
+.badge-deny    { background:#fee2e2; color:#991b1b; }
+.badge-escalate { background:#fed7aa; color:#9a3412; }
+.badge-info    { background:#e0f2fe; color:#075985; }
+.badge-none    { background:#f3f4f6; color:#6b7280; }
+
+/* ── Case detail ─────────────────────────────────────────────────── */
+#detail-panel { animation:fadeIn .15s; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+.back-btn { background:none; border:none; color:var(--blue); cursor:pointer; font-size:.82rem; margin-bottom:1rem; padding:0; display:flex; align-items:center; gap:.3rem; }
+.back-btn:hover { text-decoration:underline; }
+
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+.detail-grid.full { grid-template-columns:1fr; }
+@media (max-width:700px) { .detail-grid { grid-template-columns:1fr; } .charts-row { grid-template-columns:1fr; } }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.2rem; box-shadow:var(--shadow); }
+.card h3 { font-size:.78rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:.7rem; border-bottom:1px solid var(--border); padding-bottom:.5rem; }
+.kv { display:flex; justify-content:space-between; gap:.5rem; margin-bottom:.3rem; font-size:.82rem; flex-wrap:wrap; }
+.kv .k { color:var(--muted); flex-shrink:0; }
+.kv .v { font-weight:500; text-align:right; }
+
+/* ── Complaint quote ─────────────────────────────────────────────── */
+.complaint { background:#fffbeb; border-left:4px solid var(--amber); padding:.8rem 1rem; border-radius:0 var(--radius) var(--radius) 0; font-style:italic; margin-bottom:1rem; font-size:.88rem; }
+
+/* ── Signals ─────────────────────────────────────────────────────── */
+.signal-row { display:flex; align-items:center; gap:.5rem; font-size:.82rem; margin-bottom:.3rem; }
+.signal-row .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dot-red { background:var(--red); }
+.dot-green { background:var(--green); }
+.dot-orange { background:var(--orange); }
+.dot-gray { background:#9ca3af; }
+
+/* ── Deadline timeline ───────────────────────────────────────────── */
+.timeline { display:flex; align-items:center; gap:0; flex-wrap:wrap; margin:.5rem 0 1rem; }
+.tl-item { display:flex; flex-direction:column; align-items:center; }
+.tl-item .tl-label { font-size:.7rem; color:var(--muted); white-space:nowrap; }
+.tl-item .tl-date { font-size:.74rem; font-weight:600; white-space:nowrap; }
+.tl-item .tl-date.red { color:var(--red); }
+.tl-connector { flex:1; height:2px; background:var(--border); min-width:16px; margin-top:-.5rem; }
+.tl-dot { width:10px; height:10px; border-radius:50%; background:var(--navy); border:2px solid var(--surface); margin-bottom:2px; }
+.tl-dot.red { background:var(--red); }
+.tl-dot.amber { background:var(--amber); }
+
+/* ── Recommendation checks ───────────────────────────────────────── */
+.rec-checks { list-style:none; margin:.5rem 0; }
+.rec-checks li { display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.4rem; font-size:.82rem; }
+.check-icon { flex-shrink:0; font-size:.9rem; }
+
+/* ── Decision buttons ────────────────────────────────────────────── */
+.action-row { display:flex; gap:.7rem; flex-wrap:wrap; margin-top:.8rem; }
+.btn { padding:.45rem 1rem; border:none; border-radius:var(--radius); font-size:.82rem; font-weight:600; cursor:pointer; transition:opacity .1s; }
+.btn:hover { opacity:.88; }
+.btn-green  { background:var(--green); color:#fff; }
+.btn-amber  { background:var(--amber); color:#fff; }
+.btn-red    { background:var(--red);   color:#fff; }
+.btn-navy   { background:var(--navy);  color:#fff; }
+.btn-plain  { background:var(--border); color:var(--text); }
+
+.edit-form { margin-top:.8rem; display:none; }
+.edit-form.show { display:block; }
+.edit-form label { font-size:.78rem; color:var(--muted); display:block; margin-bottom:.2rem; }
+.edit-form input, .edit-form select, .edit-form textarea { width:100%; padding:.4rem .6rem; border:1px solid var(--border); border-radius:var(--radius); font-size:.82rem; margin-bottom:.5rem; }
+.edit-form textarea { min-height:60px; resize:vertical; }
+
+/* ── Activity ────────────────────────────────────────────────────── */
+.pipeline { display:flex; align-items:center; gap:0; margin-bottom:1.2rem; overflow-x:auto; padding:.4rem 0; }
+.pipe-stage { background:var(--navy2); color:#fff; padding:.45rem .9rem; font-size:.78rem; font-weight:600; border-radius:var(--radius); white-space:nowrap; opacity:.35; transition:opacity .3s, background .3s; }
+.pipe-stage.active { opacity:1; background:var(--amber); }
+.pipe-arrow { color:var(--border); font-size:1.1rem; margin:0 .2rem; }
+
+.activity-list { list-style:none; max-height:420px; overflow-y:auto; }
+.activity-list li { display:grid; grid-template-columns:7rem 5rem 7rem auto 4rem 5rem; gap:.5rem; align-items:center; padding:.4rem .6rem; border-bottom:1px solid var(--border); font-size:.78rem; }
+.activity-list li:hover { background:#f7f8fa; }
+.activity-list .ts { color:var(--muted); font-family:monospace; }
+.activity-list .dur { color:var(--muted); text-align:right; }
+.activity-idle { color:var(--muted); font-style:italic; padding:1rem 0; text-align:center; }
+.status-ok  { color:var(--green); font-weight:600; }
+.status-err { color:var(--red);   font-weight:600; }
+
+/* ── Audit ───────────────────────────────────────────────────────── */
+.audit-filter { display:flex; gap:.5rem; margin-bottom:.8rem; align-items:center; flex-wrap:wrap; }
+.audit-filter input { flex:1; min-width:160px; padding:.4rem .6rem; border:1px solid var(--border); border-radius:var(--radius); font-size:.82rem; }
+.audit-list { list-style:none; }
+.audit-list li { display:flex; gap:.7rem; align-items:flex-start; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.8rem; }
+.audit-list .at { color:var(--muted); font-family:monospace; white-space:nowrap; flex-shrink:0; }
+.audit-list .atype { width:80px; flex-shrink:0; }
+.audit-list .adid  { width:90px; color:var(--blue); flex-shrink:0; }
+
+/* ── Empty / error states ────────────────────────────────────────── */
+.empty { text-align:center; color:var(--muted); padding:3rem 1rem; font-style:italic; }
+.error-msg { background:#fee2e2; border:1px solid #fca5a5; border-radius:var(--radius); padding:.8rem 1rem; color:var(--red); font-size:.82rem; margin-bottom:1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Dispute<span>Desk</span></div>
+  <span class="synth-badge">SYNTHETIC DATA</span>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('overview', this)">Overview</button>
+  <button onclick="showTab('queue', this)">Case Queue</button>
+  <button id="detail-tab-btn" onclick="showTab('detail', this)" style="display:none">Case Detail</button>
+  <button onclick="showTab('activity', this)">Agent Activity</button>
+  <button onclick="showTab('audit', this)">Audit Log</button>
+</nav>
+
+<main>
+
+<!-- ================================================================
+     TAB 1 – OVERVIEW
+     ================================================================ -->
+<div id="tab-overview" class="tab-panel active">
+  <div id="stats-error" class="error-msg" style="display:none"></div>
+  <div class="tiles" id="stats-tiles">
+    <div class="tile"><div class="tile-label">Open Disputes</div><div class="tile-value" id="t-open">–</div></div>
+    <div class="tile"><div class="tile-label">Investigated</div><div class="tile-value green" id="t-investigated">–</div></div>
+    <div class="tile"><div class="tile-label">Escalated</div><div class="tile-value amber" id="t-escalated">–</div></div>
+    <div class="tile"><div class="tile-label">Deadlines at Risk (≤14 d)</div><div class="tile-value red" id="t-deadlines">–</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-box">
+      <h3>Disputes by Reason Code</h3>
+      <canvas id="chart-reason"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Agent Recommendations</h3>
+      <canvas id="chart-rec"></canvas>
+    </div>
+  </div>
+
+  <div class="accuracy-card" id="accuracy-card">
+    <div>
+      <div class="tile-label">Agent Accuracy</div>
+      <div class="accuracy-pct" id="acc-pct">–</div>
+    </div>
+    <div class="accuracy-meta">
+      <div><strong id="acc-correct">–</strong> correct of <strong id="acc-investigated">–</strong> investigated cases</div>
+      <div>out of <strong id="acc-total">–</strong> total</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     TAB 2 – CASE QUEUE
+     ================================================================ -->
+<div id="tab-queue" class="tab-panel">
+  <div id="queue-error" class="error-msg" style="display:none"></div>
+  <div class="toolbar">
+    <input type="text" id="q-search" placeholder="Search dispute ID, customer, complaint…" oninput="applyFilters()" />
+    <select id="q-status" onchange="applyFilters()">
+      <option value="">All Statuses</option>
+      <option value="open">Open</option>
+      <option value="resolved_customer">Resolved – Customer</option>
+      <option value="resolved_merchant">Resolved – Merchant</option>
+      <option value="withdrawn">Withdrawn</option>
+    </select>
+    <select id="q-card" onchange="applyFilters()">
+      <option value="">All Card Types</option>
+      <option value="credit">Credit</option>
+      <option value="debit">Debit</option>
+    </select>
+    <select id="q-rec" onchange="applyFilters()">
+      <option value="">All Recommendations</option>
+      <option value="file_chargeback">File Chargeback</option>
+      <option value="deny">Deny</option>
+      <option value="request_more_info">More Info</option>
+      <option value="escalate">Escalate</option>
+      <option value="not_investigated">Not Investigated</option>
+    </select>
+    <select id="q-deadline" onchange="applyFilters()">
+      <option value="">Any Deadline</option>
+      <option value="7">≤ 7 days</option>
+      <option value="14">≤ 14 days</option>
+      <option value="30">≤ 30 days</option>
+    </select>
+    <select id="q-sort" onchange="applyFilters()">
+      <option value="filed_date">Sort: Filed Date</option>
+      <option value="days_to_deadline">Sort: Deadline</option>
+      <option value="amount_usd">Sort: Amount</option>
+      <option value="merchant_name">Sort: Merchant</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table id="queue-table">
+      <thead>
+        <tr>
+          <th onclick="sortBy('dispute_id')">Dispute ID <span class="sort-arrow">↕</span></th>
+          <th onclick="sortBy('filed_date')">Filed <span class="sort-arrow">↕</span></th>
+          <th onclick="sortBy('customer_id')">Customer <span class="sort-arrow">↕</span></th>
+          <th onclick="sortBy('merchant_name')">Merchant <span class="sort-arrow">↕</span></th>
+          <th onclick="sortBy('amount_usd')">Amount <span class="sort-arrow">↕</span></th>
+          <th>Card</th>
+          <th onclick="sortBy('days_to_deadline')">Days Left <span class="sort-arrow">↕</span></th>
+          <th>Recommendation</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="queue-body">
+        <tr><td colspan="9" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="queue-count" style="font-size:.78rem;color:var(--muted);margin-top:.5rem;"></div>
+</div>
+
+<!-- ================================================================
+     TAB 3 – CASE DETAIL
+     ================================================================ -->
+<div id="tab-detail" class="tab-panel">
+  <button class="back-btn" onclick="backToQueue()">← Back to Case Queue</button>
+  <div id="detail-panel">
+    <div class="empty">Select a case from the Case Queue tab.</div>
+  </div>
+</div>
+
+<!-- ================================================================
+     TAB 4 – AGENT ACTIVITY
+     ================================================================ -->
+<div id="tab-activity" class="tab-panel">
+  <div class="pipeline" id="pipeline">
+    <div class="pipe-stage" id="stage-Intake">Intake</div>
+    <span class="pipe-arrow">▶</span>
+    <div class="pipe-stage" id="stage-Evidence">Evidence</div>
+    <span class="pipe-arrow">▶</span>
+    <div class="pipe-stage" id="stage-Compliance">Compliance</div>
+    <span class="pipe-arrow">▶</span>
+    <div class="pipe-stage" id="stage-Decision">Decision</div>
+    <span class="pipe-arrow">▶</span>
+    <div class="pipe-stage" id="stage-Letter">Letter</div>
+  </div>
+  <div class="card">
+    <h3>Live Tool Calls</h3>
+    <ul class="activity-list" id="activity-list">
+      <li class="activity-idle" id="activity-idle">Waiting for agents…</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================================================================
+     TAB 5 – AUDIT LOG
+     ================================================================ -->
+<div id="tab-audit" class="tab-panel">
+  <div class="audit-filter">
+    <input type="text" id="audit-search" placeholder="Filter by dispute ID…" oninput="filterAudit()" />
+  </div>
+  <div class="card">
+    <h3>Merged Activity &amp; Decision Timeline</h3>
+    <ul class="audit-list" id="audit-list">
+      <li class="empty">Loading…</li>
+    </ul>
+  </div>
+</div>
+
+</main>
+
+<script>
+/* ================================================================
+   Utility helpers
+   ================================================================ */
+function fmt(n) { return n != null ? '$' + Number(n).toFixed(2) : '–'; }
+function fmtDate(s) { return s ? s.substring(0, 10) : '–'; }
+function fmtTs(s) { return s ? s.replace('T', ' ').substring(0, 19) : '–'; }
+
+function recBadge(rec) {
+  const map = {
+    file_chargeback: 'badge-chargeback',
+    deny:            'badge-deny',
+    escalate:        'badge-escalate',
+    request_more_info:'badge-info',
+    not_investigated:'badge-none',
+  };
+  const labels = {
+    file_chargeback: 'Chargeback',
+    deny:            'Deny',
+    escalate:        'Escalate',
+    request_more_info:'More Info',
+    not_investigated:'Pending',
+  };
+  const cls = map[rec] || 'badge-none';
+  return `<span class="badge ${cls}">${labels[rec] || rec}</span>`;
+}
+
+function confBadge(c) {
+  if (!c) return '';
+  const cls = c === 'High' ? 'badge-chargeback' : c === 'Medium' ? 'badge-info' : 'badge-deny';
+  return `<span class="badge ${cls}">${c}</span>`;
+}
+
+function deadlineColor(d) { return d <= 7 ? 'red' : d <= 14 ? 'amber' : ''; }
+
+function checkIcon(ok) { return ok ? '<span class="check-icon" style="color:var(--green)">✅</span>' : '<span class="check-icon" style="color:var(--red)">❌</span>'; }
+
+/* ================================================================
+   Tab switching
+   ================================================================ */
+let _activeTab = 'overview';
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  _activeTab = name;
+  if (name === 'overview') loadOverview();
+  if (name === 'queue')    loadQueue();
+  if (name === 'audit')    loadAudit();
+}
+
+/* ================================================================
+   TAB 1 – OVERVIEW
+   ================================================================ */
+let _reasonChart = null, _recChart = null;
+
+async function loadOverview() {
+  try {
+    const [stats, eval_] = await Promise.all([
+      fetch('/api/stats').then(r => r.json()),
+      fetch('/api/evaluation').then(r => r.json()).catch(() => null),
+    ]);
+
+    // Tiles
+    document.getElementById('t-open').textContent = stats.open_disputes;
+    const investigated = Object.entries(stats.by_recommendation)
+      .filter(([k]) => k !== 'not_investigated')
+      .reduce((s, [,v]) => s + v, 0);
+    document.getElementById('t-investigated').textContent = investigated;
+    document.getElementById('t-escalated').textContent   = stats.by_recommendation['escalate'] || 0;
+    document.getElementById('t-deadlines').textContent   = stats.near_deadline;
+
+    // Reason code bar chart
+    const rcLabels = Object.keys(stats.by_reason_code);
+    const rcData   = Object.values(stats.by_reason_code);
+    if (_reasonChart) _reasonChart.destroy();
+    _reasonChart = new Chart(document.getElementById('chart-reason'), {
+      type: 'bar',
+      data: {
+        labels: rcLabels,
+        datasets: [{ label: 'Cases', data: rcData,
+          backgroundColor: '#1d4ed8', borderRadius: 4 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+      },
+    });
+
+    // Recommendation donut
+    const recLabels = Object.keys(stats.by_recommendation);
+    const recData   = Object.values(stats.by_recommendation);
+    const recColors = recLabels.map(l =>
+      l==='file_chargeback'?'#16a34a':l==='deny'?'#dc2626':l==='escalate'?'#ea580c':l==='request_more_info'?'#2563eb':'#9ca3af');
+    if (_recChart) _recChart.destroy();
+    _recChart = new Chart(document.getElementById('chart-rec'), {
+      type: 'doughnut',
+      data: { labels: recLabels, datasets: [{ data: recData, backgroundColor: recColors }] },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } },
+      },
+    });
+
+    // Accuracy
+    if (eval_) {
+      const pct = eval_.investigated > 0 ? Math.round(eval_.accuracy * 100) : '–';
+      document.getElementById('acc-pct').textContent = eval_.investigated > 0 ? pct + '%' : 'N/A';
+      document.getElementById('acc-correct').textContent     = eval_.correct;
+      document.getElementById('acc-investigated').textContent= eval_.investigated;
+      document.getElementById('acc-total').textContent       = eval_.total_cases;
+    }
+  } catch (e) {
+    document.getElementById('stats-error').textContent = 'Failed to load overview: ' + e.message;
+    document.getElementById('stats-error').style.display = 'block';
+  }
+}
+
+/* ================================================================
+   TAB 2 – CASE QUEUE
+   ================================================================ */
+let _allCases = [];
+let _sortField = 'filed_date', _sortAsc = false;
+
+async function loadQueue() {
+  try {
+    const r = await fetch('/api/cases');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    _allCases = data.cases;
+    renderQueue(_allCases);
+    document.getElementById('queue-error').style.display = 'none';
+  } catch (e) {
+    document.getElementById('queue-error').textContent = 'Failed to load cases: ' + e.message;
+    document.getElementById('queue-error').style.display = 'block';
+    document.getElementById('queue-body').innerHTML = '<tr><td colspan="9" class="empty">Could not load cases.</td></tr>';
+  }
+}
+
+function applyFilters() {
+  const q         = document.getElementById('q-search').value.toLowerCase();
+  const status    = document.getElementById('q-status').value;
+  const cardType  = document.getElementById('q-card').value;
+  const rec       = document.getElementById('q-rec').value;
+  const deadlineD = parseInt(document.getElementById('q-deadline').value) || null;
+  const sort      = document.getElementById('q-sort').value;
+
+  let cases = _allCases.filter(c => {
+    if (status && c.status && c.status !== status) return false; // status not in summary but future-proof
+    if (cardType && c.card_type !== cardType) return false;
+    if (rec === 'not_investigated' && c.recommendation !== 'not_investigated') return false;
+    if (rec && rec !== 'not_investigated' && c.recommendation !== rec) return false;
+    if (deadlineD !== null && c.days_to_deadline > deadlineD) return false;
+    if (q) {
+      const hay = (c.dispute_id + ' ' + c.customer_id + ' ' + (c.merchant_name||'')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Client-side sort
+  const sortMap = {
+    filed_date: (a, b) => b.filed_date.localeCompare(a.filed_date),
+    days_to_deadline: (a, b) => a.days_to_deadline - b.days_to_deadline,
+    amount_usd: (a, b) => b.amount_usd - a.amount_usd,
+    merchant_name: (a, b) => a.merchant_name.localeCompare(b.merchant_name),
+    dispute_id: (a, b) => a.dispute_id.localeCompare(b.dispute_id),
+    customer_id: (a, b) => a.customer_id.localeCompare(b.customer_id),
+  };
+  const fn = sortMap[_sortField] || sortMap[sort];
+  if (fn) cases = [...cases].sort(fn);
+  if (_sortAsc) cases.reverse();
+
+  renderQueue(cases);
+}
+
+function sortBy(field) {
+  if (_sortField === field) { _sortAsc = !_sortAsc; }
+  else { _sortField = field; _sortAsc = false; }
+  applyFilters();
+}
+
+function renderQueue(cases) {
+  const tbody = document.getElementById('queue-body');
+  document.getElementById('queue-count').textContent = `Showing ${cases.length} case${cases.length!==1?'s':''}`;
+  if (!cases.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">No cases match the current filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = cases.map(c => {
+    const dtd = c.days_to_deadline;
+    const dColor = deadlineColor(dtd);
+    const dLabel = dtd < 0 ? `<span style="color:var(--red)">${dtd}d (PAST)</span>` : `<span class="${dColor}" style="color:var(--${dColor||'text'})">${dtd}d</span>`;
+    return `<tr onclick="openCase('${c.dispute_id}')">
+      <td><strong>${c.dispute_id}</strong></td>
+      <td>${fmtDate(c.filed_date)}</td>
+      <td>${c.customer_id}</td>
+      <td>${c.merchant_name}</td>
+      <td>${fmt(c.amount_usd)}</td>
+      <td><span class="badge badge-${c.card_type}">${c.card_type}</span></td>
+      <td>${dLabel}</td>
+      <td>${recBadge(c.recommendation)}</td>
+      <td>${confBadge(c.confidence)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ================================================================
+   TAB 3 – CASE DETAIL
+   ================================================================ */
+let _currentCase = null;
+
+async function openCase(id) {
+  document.getElementById('detail-tab-btn').style.display = 'inline-block';
+  showTab('detail', document.getElementById('detail-tab-btn'));
+  document.getElementById('detail-panel').innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const d = await fetch(`/api/cases/${id}`).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+    _currentCase = d;
+    renderDetail(d);
+  } catch (e) {
+    document.getElementById('detail-panel').innerHTML = `<div class="error-msg">Failed to load case ${id}: ${e.message}</div>`;
+  }
+}
+
+function backToQueue() {
+  document.getElementById('detail-tab-btn').style.display = 'none';
+  showTab('queue', document.querySelectorAll('nav button')[1]);
+}
+
+function renderDetail(d) {
+  const dis = d.dispute, txn = d.transaction, sh = d.shipment;
+  const rec = d.recommendation, dl = d.deadline, sigs = d.friendly_fraud_signals;
+
+  // ── Deadline timeline ──────────────────────────────────────────
+  let timelineHtml = '';
+  if (txn) {
+    const txnDate = fmtDate(txn.txn_datetime);
+    const stmtDate = fmtDate(txn.statement_date);
+    const filedDate = fmtDate(dis.filed_date);
+    let dlDate = '–', dlPast = false;
+    if (dl) {
+      dlDate = fmtDate(dl.network_deadline);
+      dlPast = dl.days_remaining != null && dl.days_remaining < 0;
+    }
+    timelineHtml = `
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-label">Transaction</div><div class="tl-date">${txnDate}</div></div>
+        <div class="tl-connector"></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-label">Statement</div><div class="tl-date">${stmtDate}</div></div>
+        <div class="tl-connector"></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-label">Filed</div><div class="tl-date">${filedDate}</div></div>
+        <div class="tl-connector"></div>
+        <div class="tl-item"><div class="tl-dot ${dlPast?'red':'amber'}"></div><div class="tl-label">Network Deadline</div><div class="tl-date ${dlPast?'red':''}">${dlDate}${dl?' ('+dl.days_remaining+'d)':''}</div></div>
+      </div>`;
+  }
+
+  // ── Friendly-fraud signals ─────────────────────────────────────
+  let sigHtml = '';
+  if (sigs) {
+    sigHtml = `
+      <div class="signal-row"><div class="dot ${sigs.prior_undisputed_with_merchant>0?'dot-green':'dot-gray'}"></div>Prior undisputed orders with merchant: <strong>${sigs.prior_undisputed_with_merchant}</strong></div>
+      <div class="signal-row"><div class="dot ${sigs.same_device_count>0?'dot-orange':'dot-gray'}"></div>Same device seen before: <strong>${sigs.device_seen_before ? 'Yes' : 'No'}</strong> (${sigs.same_device_count} matching)</div>
+      <div class="signal-row"><div class="dot ${sigs.same_address_count>0?'dot-orange':'dot-gray'}"></div>Same shipping address seen before: <strong>${sigs.address_seen_before ? 'Yes' : 'No'}</strong> (${sigs.same_address_count} matching)</div>
+      <div class="signal-row"><div class="dot ${sigs.prior_disputes_count>0?'dot-red':'dot-gray'}"></div>Prior disputes: <strong>${sigs.prior_disputes_count}</strong> (${sigs.prior_disputes_lost} resolved against customer)</div>`;
+  }
+
+  // ── Recommendation checks ──────────────────────────────────────
+  let recHtml = '<div class="empty" style="padding:.5rem 0">Not investigated yet.</div>';
+  if (rec) {
+    const summary = rec.summary || {};
+    const facts = rec.evidence || {};
+    // Build 4 generic checks from whatever the recommendation gives us
+    const checkItems = [
+      { label: 'Filed within card-network time limit', ok: dl ? (dl.days_remaining >= 0 || dl.days_remaining == null) : null },
+      { label: 'Shipment/delivery status verified', ok: sh ? sh.delivery_status !== 'in_transit' : null },
+      { label: 'No prior refund on this transaction', ok: d.refunds.length === 0 },
+      { label: 'Friendly-fraud risk low', ok: sigs ? (sigs.same_device_count + sigs.same_address_count < 2 && sigs.prior_disputes_lost < 2) : null },
+    ];
+    const checksHtml = checkItems.map(ci =>
+      `<li>${ci.ok === null ? '⬜' : ci.ok ? checkIcon(true) : checkIcon(false)} ${ci.label}</li>`
+    ).join('');
+    recHtml = `
+      <div class="kv"><span class="k">Recommendation</span><span class="v">${recBadge(rec.recommendation)}</span></div>
+      <div class="kv"><span class="k">Confidence</span><span class="v">${confBadge(rec.confidence)}</span></div>
+      <div class="kv"><span class="k">Reason Code</span><span class="v">${rec.reason_code || '–'}</span></div>
+      <div class="kv"><span class="k">Rule Applied</span><span class="v" style="text-align:right;max-width:60%">${rec.rule_applied || '–'}</span></div>
+      <ul class="rec-checks" style="margin-top:.5rem">${checksHtml}</ul>`;
+  }
+
+  // ── Decision history ───────────────────────────────────────────
+  let decHtml = '<div style="color:var(--muted);font-size:.82rem;font-style:italic">No decisions recorded yet.</div>';
+  if (d.decisions && d.decisions.length) {
+    decHtml = d.decisions.map(dec => `
+      <div class="kv"><span class="k">${fmtTs(dec.ts)}</span>
+        <span class="v">${recBadge(dec.decision)} ${dec.final_outcome ? '→ '+dec.final_outcome : ''} ${dec.analyst ? 'by '+dec.analyst : ''}</span></div>
+      ${dec.reason ? `<div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">${dec.reason}</div>` : ''}
+    `).join('');
+  }
+
+  // ── Investigate with DisputeDesk button ───────────────────────
+  const did = dis.dispute_id;
+  const investigateBtn = `
+    <button class="btn btn-navy" onclick="investigateDispute('${did}')">
+      🔍 Investigate with DisputeDesk
+    </button>`;
+
+  // ── Full render ────────────────────────────────────────────────
+  document.getElementById('detail-panel').innerHTML = `
+    <h2 style="font-size:1.1rem;margin-bottom:.3rem">${did}</h2>
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Filed ${fmtDate(dis.filed_date)} · Status: <strong>${dis.status}</strong></div>
+
+    <div class="complaint">"${dis.complaint_text || '–'}"</div>
+
+    <div class="detail-grid">
+      <div class="card">
+        <h3>Transaction</h3>
+        ${kvRow('Transaction ID', txn?.transaction_id)}
+        ${kvRow('Date & Time', fmtTs(txn?.txn_datetime))}
+        ${kvRow('Amount', fmt(txn?.amount_usd))}
+        ${kvRow('Merchant', txn?.merchant_name)}
+        ${kvRow('Category', txn?.category)}
+        ${kvRow('Channel', txn?.channel)}
+        ${kvRow('Card Type', txn?.card_type ? `<span class="badge badge-${txn.card_type}">${txn.card_type}</span>` : '–')}
+        ${kvRow('Status', txn?.status)}
+      </div>
+      <div class="card">
+        <h3>Shipment</h3>
+        ${sh ? `
+          ${kvRow('Carrier', sh.carrier)}
+          ${kvRow('Shipped', fmtDate(sh.shipped_date))}
+          ${kvRow('Expected Delivery', fmtDate(sh.expected_delivery_date))}
+          ${kvRow('Delivered', fmtDate(sh.delivered_date))}
+          ${kvRow('Status', sh.delivery_status)}
+          ${kvRow('Proof of Delivery', sh.proof_of_delivery ? 'Yes' : 'No')}
+        ` : '<div class="empty" style="padding:.5rem 0">No shipment record.</div>'}
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="card">
+        <h3>Friendly-Fraud Signals</h3>
+        ${sigHtml || '<div class="empty" style="padding:.5rem 0">–</div>'}
+      </div>
+      <div class="card">
+        <h3>Deadline Timeline</h3>
+        ${timelineHtml || '<div class="empty" style="padding:.5rem 0">–</div>'}
+        ${dl ? `
+          ${kvRow('Reg Z notice window', dl.reg_z_notice_window_days ? dl.reg_z_notice_window_days + ' days' : '–')}
+          ${kvRow('Reg E notice window', dl.reg_e_notice_window_days ? dl.reg_e_notice_window_days + ' days' : '–')}
+        ` : ''}
+      </div>
+    </div>
+
+    <div class="detail-grid full">
+      <div class="card">
+        <h3>Agent Recommendation</h3>
+        ${recHtml}
+
+        <div class="action-row" style="margin-top:1rem">
+          <button class="btn btn-green"  onclick="submitDecision('${did}','approve')">✓ Approve Recommendation</button>
+          <button class="btn btn-amber"  onclick="toggleEditForm('edit')">✎ Edit Outcome</button>
+          <button class="btn btn-red"    onclick="toggleEditForm('override')">⚑ Override</button>
+          ${investigateBtn}
+        </div>
+
+        <div class="edit-form" id="edit-form">
+          <label>Decision type</label>
+          <select id="form-decision">
+            <option value="edit">Edit</option>
+            <option value="override">Override</option>
+          </select>
+          <label>Final outcome</label>
+          <select id="form-outcome">
+            <option value="file_chargeback">File Chargeback</option>
+            <option value="deny">Deny</option>
+            <option value="request_more_info">Request More Info</option>
+            <option value="escalate">Escalate</option>
+          </select>
+          <label>Reason (required)</label>
+          <textarea id="form-reason" placeholder="Explain the override or edit…"></textarea>
+          <label>Analyst name / ID</label>
+          <input type="text" id="form-analyst" placeholder="e.g. jsmith" />
+          <div class="action-row">
+            <button class="btn btn-navy" onclick="submitEditForm('${did}')">Submit</button>
+            <button class="btn btn-plain" onclick="toggleEditForm(null)">Cancel</button>
+          </div>
+          <div id="form-error" class="error-msg" style="display:none;margin-top:.5rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid full">
+      <div class="card">
+        <h3>Decision History</h3>
+        ${decHtml}
+      </div>
+    </div>
+  `;
+}
+
+function kvRow(label, val) {
+  return `<div class="kv"><span class="k">${label}</span><span class="v">${val != null && val !== '' ? val : '–'}</span></div>`;
+}
+
+function toggleEditForm(type) {
+  const form = document.getElementById('edit-form');
+  if (!type) { form.classList.remove('show'); return; }
+  form.classList.add('show');
+  document.getElementById('form-decision').value = type;
+  document.getElementById('form-error').style.display = 'none';
+}
+
+async function submitDecision(id, decision) {
+  const analyst = prompt('Your analyst name or ID:', 'analyst');
+  if (!analyst) return;
+  try {
+    const r = await fetch(`/api/cases/${id}/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, final_outcome: _currentCase?.recommendation?.recommendation || decision, analyst }),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.status); }
+    alert('Decision recorded.');
+    openCase(id); // refresh
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function submitEditForm(id) {
+  const decision     = document.getElementById('form-decision').value;
+  const final_outcome= document.getElementById('form-outcome').value;
+  const reason       = document.getElementById('form-reason').value.trim();
+  const analyst      = document.getElementById('form-analyst').value.trim();
+  const errEl        = document.getElementById('form-error');
+
+  if (!reason)   { errEl.textContent = 'Reason is required.'; errEl.style.display='block'; return; }
+  if (!analyst)  { errEl.textContent = 'Analyst name is required.'; errEl.style.display='block'; return; }
+
+  try {
+    const r = await fetch(`/api/cases/${id}/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, final_outcome, reason, analyst }),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.status); }
+    alert('Decision recorded.');
+    openCase(id);
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function investigateDispute(id) {
+  const msg = `Investigate dispute ${id}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(msg).then(() => {}).catch(() => {});
+  }
+  const url = (typeof CONFIG !== 'undefined' && CONFIG.ORCHESTRATE_CHAT_URL)
+    ? CONFIG.ORCHESTRATE_CHAT_URL
+    : null;
+  if (url) {
+    window.open(url, '_blank');
+  } else {
+    alert(`Copied to clipboard: "${msg}"\n\nSet ORCHESTRATE_CHAT_URL in ui/config.js to enable direct launch.`);
+  }
+}
+
+/* ================================================================
+   TAB 4 – AGENT ACTIVITY  (polls every 2 s)
+   ================================================================ */
+let _lastActivityId = 0;
+let _activityTimer = null;
+const STAGES = ['Intake','Evidence','Compliance','Decision','Letter'];
+
+function startActivityPolling() {
+  stopActivityPolling();
+  pollActivity();
+  _activityTimer = setInterval(pollActivity, 2000);
+}
+function stopActivityPolling() {
+  if (_activityTimer) { clearInterval(_activityTimer); _activityTimer = null; }
+}
+
+async function pollActivity() {
+  try {
+    const rows = await fetch(`/api/activity?since=${_lastActivityId}`).then(r => r.json());
+    if (!Array.isArray(rows)) return;
+    if (rows.length === 0) return;
+
+    _lastActivityId = rows[rows.length - 1].id;
+    const list = document.getElementById('activity-list');
+    const idle = document.getElementById('activity-idle');
+    if (idle) idle.style.display = 'none';
+
+    // Highlight the most recent stage in the pipeline
+    const lastStage = rows[rows.length - 1].stage;
+    STAGES.forEach(s => {
+      const el = document.getElementById('stage-' + s);
+      if (el) el.classList.toggle('active', s === lastStage);
+    });
+
+    rows.forEach(r => {
+      const li = document.createElement('li');
+      const statusCls = r.status_code && r.status_code >= 400 ? 'status-err' : 'status-ok';
+      const statusTxt = r.status_code ? `<span class="${statusCls}">${r.status_code}</span>` : '–';
+      const dur = r.duration_ms != null ? (r.duration_ms / 1000).toFixed(2) + 's' : '–';
+      li.innerHTML = `
+        <span class="ts">${fmtTs(r.ts).substring(11)}</span>
+        <span class="badge badge-none">${r.stage}</span>
+        <span>${r.tool}</span>
+        <span style="color:var(--blue)">${r.dispute_id || r.transaction_id || '–'}</span>
+        ${statusTxt}
+        <span class="dur">${dur}</span>`;
+      list.prepend(li);
+    });
+  } catch (_) { /* silent – we just won't update */ }
+}
+
+/* Start/stop polling when this tab becomes visible */
+const _origShowTab = showTab;
+(function patchShowTab() {
+  const orig = window.showTab;
+  window.showTab = function(name, btn) {
+    orig(name, btn);
+    if (name === 'activity') startActivityPolling();
+    else stopActivityPolling();
+  };
+})();
+
+/* ================================================================
+   TAB 5 – AUDIT LOG
+   ================================================================ */
+let _allAudit = [];
+
+async function loadAudit() {
+  try {
+    const rows = await fetch('/api/audit').then(r => r.json());
+    _allAudit = Array.isArray(rows) ? rows : [];
+    filterAudit();
+  } catch (e) {
+    document.getElementById('audit-list').innerHTML = `<li class="empty">Failed to load audit log: ${e.message}</li>`;
+  }
+}
+
+function filterAudit() {
+  const q = document.getElementById('audit-search').value.toLowerCase().trim();
+  const rows = q ? _allAudit.filter(r => r.dispute_id && r.dispute_id.toLowerCase().includes(q)) : _allAudit;
+  const list = document.getElementById('audit-list');
+  if (!rows.length) {
+    list.innerHTML = '<li class="empty">No entries found.</li>';
+    return;
+  }
+  list.innerHTML = rows.map(r => {
+    const badge = r.type === 'decision'
+      ? `<span class="badge badge-chargeback">Decision</span>`
+      : `<span class="badge badge-none">Tool</span>`;
+    const extra = r.type === 'tool_call'
+      ? `${r.tool || ''} ${r.detail ? '· '+r.detail : ''}`
+      : `${r.decision || ''} ${r.analyst ? 'by '+r.analyst : ''} ${r.detail ? '– '+r.detail : ''}`;
+    return `<li>
+      <span class="at">${fmtTs(r.ts)}</span>
+      <span class="atype">${badge}</span>
+      <span class="adid">${r.dispute_id || '–'}</span>
+      <span>${extra}</span>
+    </li>`;
+  }).join('');
+}
+
+/* ================================================================
+   Bootstrap
+   ================================================================ */
+loadOverview();
+loadQueue();
+</script>
+
+</body>
+</html>

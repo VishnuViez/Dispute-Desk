@@ -359,3 +359,18 @@ class TestExportStillClean:
         ids = {op["operationId"] for ops in spec["paths"].values() for op in ops.values()}
         assert ids == module.EXPECTED_TOOLS, f"Unexpected operation IDs: {ids}"
         assert not any(p.startswith("/api/") for p in spec["paths"]), "/api/ leaked into tools spec"
+
+
+# ---------------------------------------------------------------------------
+# 9. GET / – analyst dashboard SPA is served
+# ---------------------------------------------------------------------------
+
+class TestDashboardUI:
+    def test_root_returns_200_html(self, client_with_tmpdb):
+        r = client_with_tmpdb.get("/")
+        assert r.status_code == 200
+        assert "text/html" in r.headers.get("content-type", "")
+
+    def test_root_contains_disputedesk(self, client_with_tmpdb):
+        r = client_with_tmpdb.get("/")
+        assert b"DisputeDesk" in r.content
