@@ -7,7 +7,7 @@
 
 ## 0:00 – 0:20 | The problem
 
-**On screen:** a simple slide or plain text: "15–25 disputes per day. Dozens of reason codes. Strict deadlines. Friendly fraud."
+**On screen:** a simple slide or plain text: "Messy complaints. Dozens of reason codes. Strict deadlines. Friendly fraud."
 
 **Voice-over:**
 
@@ -39,7 +39,7 @@ Type `Investigate dispute DSP-0046` and press Enter. Switch back to the dashboar
 
 **Voice-over:**
 
-> "The supervisor delegates to four specialist agents in order. The Intake Agent classifies it as reason code 10.4 — card-absent fraud. The Evidence Investigator finds three earlier undisputed orders at the same merchant from the same device and address. The Compliance Agent confirms it is within time limits and cites Reg Z."
+> "The supervisor delegates to four specialist agents in order. The Intake Agent classifies it as reason code 10.4 — card-absent fraud. The Evidence Investigator finds three earlier undisputed orders at the same merchant from the same device and address. The Compliance Agent confirms it is within time limits and cites Regulation E, because this is a debit card."
 
 Switch back to the Orchestrate chat.
 
@@ -65,7 +65,7 @@ Switch back to the Orchestrate chat.
 
 > "Four checks pass, High confidence. Same card, same merchant, same amount, two minutes apart — a clear duplicate. Maria types approve."
 
-Type `approve`. Analyst name prompt: type `maria`.
+Type `approve`.
 
 **On screen:** the Letter Writer's draft appears under "Draft letter for your review".
 
@@ -73,7 +73,7 @@ Type `approve`. Analyst name prompt: type `maria`.
 
 > "The Letter Writer drafts a customer letter. It covers only the duplicate charge, not the original purchase. Maria reviews it here before anything goes to the customer. Switch to the dashboard."
 
-Switch to the dashboard case detail for DSP-0021.
+Switch to the dashboard case detail for DSP-0021 and record the decision: **Approve**, analyst name `maria`.
 
 **On screen:** the "Draft Letter for Review" card at the bottom of the case page, with the letter text and chargeback summary.
 

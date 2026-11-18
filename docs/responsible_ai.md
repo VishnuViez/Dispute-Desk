@@ -15,7 +15,7 @@ The analyst reviews the recommendation, the confidence score, the four named che
 - **Edit** the outcome (choosing a different one, with a mandatory reason).
 - **Override** the recommendation entirely (also requiring a reason).
 
-Only after the analyst acts is a decision written to `data/activity.db`. The Letter Writer drafts the customer letter for the analyst to review — it does not send anything.
+The analyst records the decision on the dashboard case page (decision, final outcome, analyst name and, for edits and overrides, a reason). It is saved to `data/activity.db`. The Letter Writer drafts the customer letter for the analyst to review — it does not send anything.
 
 There are no automatic denials. Even when the deadline check returns `within_time_limits=false`, the recommendation is `deny` — which still requires the analyst to approve it before anything happens.
 
@@ -23,7 +23,7 @@ There are no automatic denials. Even when the deadline check returns `within_tim
 
 ## Facts not people
 
-The agent instructions explicitly prohibit describing customers in ways that imply character. All agents are instructed: *"Describe facts, never people. Say '3 earlier undisputed purchases from the same device', never 'the customer is a fraudster'."* The word "friendly fraud" never appears in a customer-facing output or letter.
+The agent instructions explicitly prohibit describing customers in ways that imply character. All agents are instructed: *"Describe facts, never people. Say '3 earlier undisputed purchases from the same device', never 'the customer is a fraudster'."* The Letter Writer is instructed never to mention "friendly fraud", fraud suspicions, confidence scores or internal checks in a customer letter.
 
 ---
 

@@ -22,7 +22,7 @@ flowchart TD
     subgraph Laptop["Team laptop"]
         Tunnel["Cloudflare tunnel\nhttps://….trycloudflare.com"]
         subgraph FastAPI["FastAPI – port 8000"]
-            Tools["/tools/* (7 endpoints)\nread-only"]
+            Tools["/tools/* (7 endpoints)\nreads data DB read-only"]
             API["/api/* (dashboard)\nread + write activity"]
         end
         DataDB[("data/disputedesk.db\nread-only\nSQLite")]
@@ -56,7 +56,7 @@ The supervisor asks the Intake Agent to classify it.
 **Step 2 – Intake Agent**
 
 Calls `get_dispute(DSP-0046)` → complaint text, `transaction_id=TXN-000531`, `customer_id=CUST-0024`.  
-Calls `get_transaction(TXN-000531)` → $340 online purchase at an electronics merchant, `channel=online`, `device_id=DEV-0024`, `shipping_address_id=ADDR-0024`.  
+Calls `get_transaction(TXN-000531)` → $340 online purchase at Thornwick Goods (MERCH-009) on 2026-10-05, debit card, `channel=online`, `device_id=DEV-0033`, `shipping_address_id=ADDR-0031`.  
 Returns reason code **10.4** (card-absent fraud).
 
 **Step 3 – Evidence Investigator**
@@ -68,8 +68,8 @@ Returns `history_fits_claim=no`.
 
 **Step 4 – Compliance Agent**
 
-Calls `check_deadline(DSP-0046, 10.4)` → filed 2026-10-12, transaction 2026-10-01, within 120-day network limit and 60-day Reg Z window → `within_time_limits=true`.  
-Cites Reg Z §1026.13 from the knowledge base.
+Calls `check_deadline(DSP-0046, 10.4)` → transaction 2026-10-05, filed 2026-10-12. It is a debit card, so Regulation E applies: within the card network deadline (2027-02-02) and the Reg E notice deadline (2026-12-04) → `within_time_limits=true`.  
+Cites Reg E §1005.11 from the knowledge base.
 
 **Step 5 – recommend_outcome (plain code)**
 
@@ -89,10 +89,10 @@ Confidence: Medium (3/4)
 ❌ History fits the claim
 ✅ Reason code clear
 Key evidence:
-  • TXN-000531: $340 at MERCH-009 on 2026-10-01 (credit card)
+  • TXN-000531: $340.00 at Thornwick Goods on 2026-10-05 (debit card)
   • 3 earlier undisputed purchases at this merchant, same device, same address
   • 2 prior disputes resolved in the merchant's favour
-Rule: Reg Z §1026.13 – within time limits
+Rule: Reg E §1005.11 – notice within 60 days of the statement (met)
 Next step: forward to a senior analyst for review.
 Reply approve, edit or override.
 ```

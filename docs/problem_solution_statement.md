@@ -2,7 +2,7 @@
 
 ## The problem
 
-Every time a card is used in a dispute, a human analyst must do the same detective work: read a customer's complaint written in their own words, map it to the right Visa reason code from a list of dozens, check whether the dispute was filed within two overlapping time limits (the card network's 120-day window and the 60-day notice requirement under Regulation Z or Regulation E), gather supporting evidence from transaction records and shipment data, and write a decision letter. That work is repetitive but also consequential — a wrong reason code, a missed deadline, or an overlooked refund can cost the bank or the customer money.
+For every card dispute, a human analyst must do the same detective work: read a customer's complaint written in their own words, map it to the right Visa reason code from a list of dozens, check whether the dispute was filed within two overlapping time limits (the card network's 120-day window and the 60-day notice requirement under Regulation Z or Regulation E), gather supporting evidence from transaction records and shipment data, and write a decision letter. That work is repetitive but also consequential — a wrong reason code, a missed deadline, or an overlooked refund can cost the bank or the customer money.
 
 A subtler problem is **friendly fraud**: a customer who disputes a purchase they actually made. The signals are in the data — the disputed device and shipping address match purchases the customer made last month, or they have already lost two similar disputes — but reading those signals consistently across dozens of open cases requires pulling data from multiple tables and comparing it in a structured way.
 

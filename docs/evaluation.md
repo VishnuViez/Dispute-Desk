@@ -21,7 +21,7 @@ This measures how often the full multi-agent system — including the language m
 1. Start the API (`uvicorn backend.app.main:app --port 8000`) and confirm `/health` shows `"database": "connected"`.
 2. Start the tunnel and re-import the tools in Orchestrate with the current tunnel address.
 3. For each of the 30 disputes in `data/cases.csv` (DSP-0021 to DSP-0052), type `Investigate dispute <ID>` in the DisputeDesk supervisor chat.
-4. When the supervisor shows its recommendation, type `approve` (even if the recommendation is wrong — we are measuring what the agent produces, not correcting it).
+4. Do not correct the agent, even if the recommendation looks wrong: we are measuring what it produces. Its `recommend_outcome` call is saved automatically, so there is no need to approve. Start a new chat for each case so one case does not influence the next.
 5. The `recommend_outcome` tool call is logged automatically. `GET /api/evaluation` compares the saved recommendations to `data/cases.csv` and returns accuracy.
 
 ### Reading the results

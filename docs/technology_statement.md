@@ -2,7 +2,7 @@
 
 ## IBM Bob
 
-IBM Bob was used as the primary build tool throughout the project. Every major component — the synthetic data generator, the FastAPI backend, the agent instruction files, the dashboard, the deadline and recommendation logic, the OpenAPI export script, and the test suite — was built in Bob task sessions. Session screenshots and exported task history are in `bob_sessions/`.
+IBM Bob was the main build tool. Bob built the repo scaffold and FastAPI backend, the synthetic data generator with the 30-case answer key, the four data tools, the activity log and dashboard API, the analyst dashboard, the `record_letter_draft` tool, the README and these documents, and it ran the project audit. The deadline and decision rules (`check_deadline`, `recommend_outcome`), the OpenAPI export script and the agent instruction files were written outside Bob with help from another AI assistant (Claude); Bob then wired them into the app, ran their tests and kept the docs in step. Session screenshots and exported task history are in `bob_sessions/`.
 
 Bob's ability to read the entire codebase and reason about interdependencies across files made it possible to build consistent, testable components in a small team. It was used not just to write code but to run the credential and synthetic-data audits, refactor the router layout, and diagnose test failures.
 
@@ -24,7 +24,7 @@ A sixth agent, **DisputeDesk Backup**, is a single-agent fallback that calls all
 
 **OpenAPI tools:** the backend is exposed to Orchestrate through a generated OpenAPI 3.0.3 file (`agent/disputedesk_tools_openapi.json`), produced by `agent/export_openapi.py`. This script pulls the spec from the running FastAPI app, filters to `/tools/*` paths only, converts nullable fields for 3.0 compatibility, removes 422 responses, injects the tunnel URL as the single server, and validates the result with `openapi-spec-validator`. The lab does not support hosting, so the API runs on a laptop and is exposed through a Cloudflare tunnel.
 
-**"Show reasoning":** Orchestrate's reasoning view shows the supervisor delegating to Intake → Evidence Investigator → Compliance → recommend_outcome → Letter Writer in order, with every tool call and its result visible.
+**"Show reasoning":** Orchestrate's reasoning view shows the supervisor delegating to Intake → Evidence Investigator → Compliance → recommend_outcome in order (and to the Letter Writer after the analyst approves), with the tool calls and their results.
 
 ## The model
 
@@ -37,7 +37,7 @@ The backend is a **FastAPI** application. Each tool endpoint has:
 - a `summary` and plain-English `description` (read by Orchestrate to decide when to call the tool),
 - a **Pydantic v2** response model with field descriptions written for a non-expert.
 
-All tool endpoints are read-only. They connect to `data/disputedesk.db` via the SQLite URI syntax `?mode=ro`, which prevents any accidental write. A separate writable database, `data/activity.db`, is used only by the activity log middleware and the `record_letter_draft` and `recommend_outcome` endpoints.
+No tool can change the dispute data: the tools connect to `data/disputedesk.db` via the SQLite URI syntax `?mode=ro`, which prevents any accidental write. A separate writable database, `data/activity.db`, is used only by the activity log middleware and the `record_letter_draft` and `recommend_outcome` endpoints.
 
 The middleware logs every `/tools/*` call (tool name, dispute ID, HTTP status, duration) in a try/except so a logging failure can never break a tool call.
 
@@ -51,7 +51,7 @@ The analyst dashboard is a single HTML file (`ui/index.html`) served by FastAPI'
 
 ## Tests
 
-The test suite has **121 tests across 6 files**:
+The test suite has **121 tests across 7 files**:
 
 | File | What it covers |
 |---|---|
@@ -61,6 +61,6 @@ The test suite has **121 tests across 6 files**:
 | `backend/tests/test_recommendation.py` | **30/30 cases match the answer key**; demo case shapes; error responses |
 | `backend/tests/test_api.py` | All `/api` dashboard endpoints, middleware, evaluation, export clean check |
 | `backend/tests/test_letter.py` | `record_letter_draft` endpoint, activity stage, case detail inclusion, 7-tool export count |
-| `data/tests/test_generated_data.py` | 27 data integrity checks: row counts, demo cases, no real PII, timing rules |
+| `data/tests/test_generated_data.py` | Data integrity checks: row counts, demo cases, no real PII, timing rules |
 
 All tests run with `pytest` from the repo root. `recommend_outcome` is deterministic plain code, which is why 30/30 accuracy is verifiable without running the AI.
