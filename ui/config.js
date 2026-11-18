@@ -3,6 +3,6 @@
  * Fill in ORCHESTRATE_CHAT_URL with your watsonx Orchestrate chat permalink.
  */
 const CONFIG = {
-  // e.g. "https://your-org.orchestrate.ibm.com/chat/YOUR_AGENT_ID"
-  ORCHESTRATE_CHAT_URL: "",
+  // watsonx Orchestrate chat permalink for the DisputeDesk supervisor agent.
+  ORCHESTRATE_CHAT_URL: "https://ap-south-1.dl.watson-orchestrate.ibm.com/chat",
 };
