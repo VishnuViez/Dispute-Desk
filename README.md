@@ -31,7 +31,17 @@ Analyst ── Orchestrate chat ── DisputeDesk (supervisor, IBM cloud)
 - Deadlines and the final recommendation are plain code (no AI) so results are deterministic and testable.
 - The dashboard reads from both the read-only SQLite data DB and a separate writable activity DB (`data/activity.db`).
 
-Detailed docs: [`agent/ORCHESTRATE_SETUP.md`](agent/ORCHESTRATE_SETUP.md) · [`docs/sources.md`](docs/sources.md)
+Detailed docs: [`agent/ORCHESTRATE_SETUP.md`](agent/ORCHESTRATE_SETUP.md) · [`docs/sources.md`](docs/sources.md) · [`docs/architecture.md`](docs/architecture.md)
+
+| Document | Description |
+|---|---|
+| [`docs/problem_solution_statement.md`](docs/problem_solution_statement.md) | The problem, the user, demo cases A/B/C and results |
+| [`docs/technology_statement.md`](docs/technology_statement.md) | IBM Bob, Orchestrate, the model, FastAPI, tests |
+| [`docs/responsible_ai.md`](docs/responsible_ai.md) | Human in the loop, no demographics, audit log, limitations |
+| [`docs/evaluation.md`](docs/evaluation.md) | Accuracy method, time-per-case template, usability check template |
+| [`docs/video_script.md`](docs/video_script.md) | Scene-by-scene script for the ≤3 min demo video |
+| [`docs/architecture.md`](docs/architecture.md) | Mermaid system diagram and DSP-0046 step-by-step walkthrough |
+| [`agent/ORCHESTRATE_SETUP.md`](agent/ORCHESTRATE_SETUP.md) | Full Orchestrate setup: agents, tools, model, test checklist |
 
 ---
 
