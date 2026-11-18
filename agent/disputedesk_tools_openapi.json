@@ -1,0 +1,1023 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DisputeDesk Tools API",
+    "description": "Backend tools for the DisputeDesk card-dispute AI agent.",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://belief-sonic-eggs-plaza.trycloudflare.com"
+    }
+  ],
+  "paths": {
+    "/tools/disputes/{dispute_id}": {
+      "get": {
+        "summary": "Look up a dispute by ID.",
+        "description": "Returns the dispute record and the card type (credit or debit) of the charged account. Use this as your first call when a customer reports a problem.",
+        "operationId": "get_dispute",
+        "parameters": [
+          {
+            "name": "dispute_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispute Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisputeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/transactions/{transaction_id}": {
+      "get": {
+        "summary": "Look up a transaction and check for duplicates.",
+        "description": "Returns all details of a transaction including the merchant name, card type, any subscription dates, any refunds, and any other charges on the same card at the same merchant for the same amount within 24 hours.",
+        "operationId": "get_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Transaction Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/customers/{customer_id}/history": {
+      "get": {
+        "summary": "Get a customer's transaction history and optional fraud signals.",
+        "description": "Returns the customer's account open date and up to 50 recent transactions. When you also supply merchant_id and transaction_id, the response includes friendly_fraud_signals: counts of prior purchases at the same merchant using the same device or shipping address, device/address novelty flags, and the customer's dispute history.",
+        "operationId": "get_customer_history",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "merchant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter signals to this merchant.",
+              "title": "Merchant Id",
+              "nullable": true
+            },
+            "description": "Filter signals to this merchant."
+          },
+          {
+            "name": "transaction_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The disputed transaction ID. Required with merchant_id to get fraud signals.",
+              "title": "Transaction Id",
+              "nullable": true
+            },
+            "description": "The disputed transaction ID. Required with merchant_id to get fraud signals."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/merchants/{merchant_id}": {
+      "get": {
+        "summary": "Look up a merchant and optional shipment details.",
+        "description": "Returns the merchant's name, category, whether they operate online, and their refund policy. Provide transaction_id to also get the shipment record for that order.",
+        "operationId": "get_merchant_info",
+        "parameters": [
+          {
+            "name": "merchant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Merchant Id"
+            }
+          },
+          {
+            "name": "transaction_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Include the shipment record for this transaction, if one exists.",
+              "title": "Transaction Id",
+              "nullable": true
+            },
+            "description": "Include the shipment record for this transaction, if one exists."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MerchantResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/disputes/{dispute_id}/deadline-check": {
+      "get": {
+        "summary": "Check whether a dispute was filed within the time limits.",
+        "description": "Checks a dispute against the card network's 120-day limit (counted from the expected delivery date for reason code 13.1) and the 60-day customer notice limit in Regulation Z (credit cards) or Regulation E (debit cards). Returns within_time_limits, too_early (13.1 only), the exact deadline dates, and the deadlines the bank must meet. Always use this instead of calculating dates yourself.",
+        "operationId": "check_deadline",
+        "parameters": [
+          {
+            "name": "dispute_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispute Id"
+            }
+          },
+          {
+            "name": "reason_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReasonCode",
+              "description": "The Visa reason code chosen for this dispute: 10.4, 12.6.1, 13.1, 13.2, 13.3, 13.6 or N/A."
+            },
+            "description": "The Visa reason code chosen for this dispute: 10.4, 12.6.1, 13.1, 13.2, 13.3, 13.6 or N/A."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeadlineCheckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/disputes/{dispute_id}/recommendation": {
+      "get": {
+        "summary": "Get the rule-based recommendation and confidence score for a dispute.",
+        "description": "Applies DisputeDesk's written decision rules to a dispute and returns the recommendation (file_chargeback, deny, request_more_info or escalate), the rule that produced it, the 4 confidence checks (within time limits, evidence found, history fits the claim, reason code clear) and the key evidence. Use this as the final step of every investigation and present its recommendation exactly; do not change it. A human analyst makes the final decision.",
+        "operationId": "recommend_outcome",
+        "parameters": [
+          {
+            "name": "dispute_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispute Id"
+            }
+          },
+          {
+            "name": "reason_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReasonCode",
+              "description": "The Visa reason code chosen for this dispute: 10.4, 12.6.1, 13.1, 13.2, 13.3, 13.6 or N/A."
+            },
+            "description": "The Visa reason code chosen for this dispute: 10.4, 12.6.1, 13.1, 13.2, 13.3, 13.6 or N/A."
+          },
+          {
+            "name": "customer_contacted_merchant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "True if the complaint says the customer contacted the merchant or returned the item (matters for 13.3).",
+              "default": false,
+              "title": "Customer Contacted Merchant",
+              "nullable": true
+            },
+            "description": "True if the complaint says the customer contacted the merchant or returned the item (matters for 13.3)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BankResponseDeadlines": {
+        "properties": {
+          "acknowledge_by": {
+            "type": "string",
+            "title": "Acknowledge By",
+            "description": "Credit cards only: date by which the bank must acknowledge the dispute in writing (Reg Z, 30 days).",
+            "nullable": true
+          },
+          "investigate_by": {
+            "type": "string",
+            "title": "Investigate By",
+            "description": "Debit cards only: date by which the bank must finish investigating (Reg E, 10 business days).",
+            "nullable": true
+          },
+          "resolve_by": {
+            "type": "string",
+            "title": "Resolve By",
+            "description": "Latest date by which the bank must resolve the dispute (90 days after it was filed)."
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "description": "Plain-English explanation of these bank deadlines."
+          }
+        },
+        "type": "object",
+        "required": [
+          "resolve_by",
+          "note"
+        ],
+        "title": "BankResponseDeadlines"
+      },
+      "Check": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "What was checked."
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed",
+            "description": "True if the check passed."
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "One plain-English line explaining the result."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "passed",
+          "detail"
+        ],
+        "title": "Check"
+      },
+      "CustomerHistoryResponse": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "The customer whose history is shown."
+          },
+          "account_open_date": {
+            "type": "string",
+            "title": "Account Open Date",
+            "description": "Date the customer opened their account."
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionSummary"
+            },
+            "type": "array",
+            "title": "Transactions",
+            "description": "Up to 50 of the customer's most recent transactions, newest first."
+          },
+          "friendly_fraud_signals": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FraudSignals"
+              }
+            ],
+            "description": "Populated only when both merchant_id and transaction_id query parameters are provided. Contains evidence relevant to assessing whether the dispute may be a familiar purchase the customer later denied.",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "account_open_date",
+          "transactions"
+        ],
+        "title": "CustomerHistoryResponse"
+      },
+      "DeadlineCheckResponse": {
+        "properties": {
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "description": "The dispute that was checked."
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code",
+            "description": "The reason code the deadlines were checked for."
+          },
+          "card_type": {
+            "type": "string",
+            "title": "Card Type",
+            "description": "'credit' or 'debit'."
+          },
+          "regulation": {
+            "type": "string",
+            "title": "Regulation",
+            "description": "'Reg Z' for credit cards or 'Reg E' for debit cards."
+          },
+          "transaction_date": {
+            "type": "string",
+            "title": "Transaction Date",
+            "description": "Date of the disputed charge (YYYY-MM-DD)."
+          },
+          "statement_date": {
+            "type": "string",
+            "title": "Statement Date",
+            "description": "Statement on which the charge first appeared (YYYY-MM-DD)."
+          },
+          "filed_date": {
+            "type": "string",
+            "title": "Filed Date",
+            "description": "Date the customer filed the dispute (YYYY-MM-DD)."
+          },
+          "network_start_date": {
+            "type": "string",
+            "title": "Network Start Date",
+            "description": "Date the 120-day card network limit counts from: the transaction date, or the expected delivery date for 13.1."
+          },
+          "network_deadline": {
+            "type": "string",
+            "title": "Network Deadline",
+            "description": "Last day to file under the 120-day card network limit."
+          },
+          "network_ok": {
+            "type": "boolean",
+            "title": "Network Ok",
+            "description": "True if the dispute was filed within the card network limit."
+          },
+          "regulation_notice_deadline": {
+            "type": "string",
+            "title": "Regulation Notice Deadline",
+            "description": "Last day for the customer's notice under Reg Z or Reg E (60 days after the statement)."
+          },
+          "regulation_ok": {
+            "type": "boolean",
+            "title": "Regulation Ok",
+            "description": "True if the customer's notice was within the 60-day regulation limit."
+          },
+          "too_early": {
+            "type": "boolean",
+            "title": "Too Early",
+            "description": "True only for 13.1 when the dispute was filed before the expected delivery date."
+          },
+          "within_time_limits": {
+            "type": "boolean",
+            "title": "Within Time Limits",
+            "description": "True only if both the card network limit and the regulation limit were met. If false, the dispute was filed too late."
+          },
+          "bank_response_deadlines": {
+            "$ref": "#/components/schemas/BankResponseDeadlines",
+            "description": "Deadlines the bank itself must meet when handling this dispute."
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "One plain-English sentence summarizing the deadline check."
+          }
+        },
+        "type": "object",
+        "required": [
+          "dispute_id",
+          "reason_code",
+          "card_type",
+          "regulation",
+          "transaction_date",
+          "statement_date",
+          "filed_date",
+          "network_start_date",
+          "network_deadline",
+          "network_ok",
+          "regulation_notice_deadline",
+          "regulation_ok",
+          "too_early",
+          "within_time_limits",
+          "bank_response_deadlines",
+          "summary"
+        ],
+        "title": "DeadlineCheckResponse"
+      },
+      "DisputeResponse": {
+        "properties": {
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "description": "Unique identifier for this dispute (e.g. DSP-0001)."
+          },
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id",
+            "description": "The transaction the customer is disputing."
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "The customer who filed the dispute."
+          },
+          "filed_date": {
+            "type": "string",
+            "title": "Filed Date",
+            "description": "Date the customer filed the dispute (YYYY-MM-DD)."
+          },
+          "complaint_text": {
+            "type": "string",
+            "title": "Complaint Text",
+            "description": "The customer's complaint in their own words."
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current status: 'open', 'resolved_customer', 'resolved_merchant', or 'withdrawn'."
+          },
+          "card_type": {
+            "type": "string",
+            "title": "Card Type",
+            "description": "Whether the disputed charge was on a credit or debit card."
+          }
+        },
+        "type": "object",
+        "required": [
+          "dispute_id",
+          "transaction_id",
+          "customer_id",
+          "filed_date",
+          "complaint_text",
+          "status",
+          "card_type"
+        ],
+        "title": "DisputeResponse"
+      },
+      "FraudSignals": {
+        "properties": {
+          "prior_undisputed_with_merchant": {
+            "type": "integer",
+            "title": "Prior Undisputed With Merchant",
+            "description": "Number of earlier charges at the same merchant that were never disputed. A high count can indicate the customer knows the merchant well."
+          },
+          "same_device_count": {
+            "type": "integer",
+            "title": "Same Device Count",
+            "description": "Among those prior purchases at the same merchant, how many used the same device as the charge being investigated."
+          },
+          "same_address_count": {
+            "type": "integer",
+            "title": "Same Address Count",
+            "description": "Among those prior purchases at the same merchant, how many were shipped to the same address as the charge being investigated."
+          },
+          "device_seen_before": {
+            "type": "boolean",
+            "title": "Device Seen Before",
+            "description": "True if the device used for the disputed charge appeared in any earlier transaction by this customer, not just with this merchant."
+          },
+          "address_seen_before": {
+            "type": "boolean",
+            "title": "Address Seen Before",
+            "description": "True if the shipping address on the disputed charge appeared in any earlier transaction by this customer, not just with this merchant."
+          },
+          "prior_disputes_count": {
+            "type": "integer",
+            "title": "Prior Disputes Count",
+            "description": "Total number of past disputes (any status) filed by this customer."
+          },
+          "prior_disputes_lost": {
+            "type": "integer",
+            "title": "Prior Disputes Lost",
+            "description": "Number of past disputes where the outcome was resolved_merchant (the merchant won). A high number alongside other signals may warrant closer review."
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "One plain-English sentence summarising the key facts above."
+          }
+        },
+        "type": "object",
+        "required": [
+          "prior_undisputed_with_merchant",
+          "same_device_count",
+          "same_address_count",
+          "device_seen_before",
+          "address_seen_before",
+          "prior_disputes_count",
+          "prior_disputes_lost",
+          "summary"
+        ],
+        "title": "FraudSignals"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Always 'ok' when the API is running."
+          },
+          "database": {
+            "type": "string",
+            "title": "Database",
+            "description": "'connected' if the database file is present, 'missing' if not."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database"
+        ],
+        "title": "HealthResponse"
+      },
+      "MerchantResponse": {
+        "properties": {
+          "merchant_id": {
+            "type": "string",
+            "title": "Merchant Id",
+            "description": "Unique merchant identifier (e.g. MERCH-001)."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Merchant's trading name."
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "Type of business (coffee_shop, restaurant, grocery, online_retail, electronics, streaming, fitness, or travel)."
+          },
+          "is_online": {
+            "type": "boolean",
+            "title": "Is Online",
+            "description": "True if this merchant operates online."
+          },
+          "refund_policy": {
+            "type": "string",
+            "title": "Refund Policy",
+            "description": "The merchant's stated refund policy."
+          },
+          "shipment": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShipmentRecord"
+              }
+            ],
+            "description": "Shipment information for the provided transaction_id. Null if no shipment record exists or no transaction_id was given.",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "merchant_id",
+          "name",
+          "category",
+          "is_online",
+          "refund_policy"
+        ],
+        "title": "MerchantResponse"
+      },
+      "PossibleDuplicate": {
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id",
+            "description": "ID of the other charge that looks like a duplicate."
+          },
+          "txn_datetime": {
+            "type": "string",
+            "title": "Txn Datetime",
+            "description": "Date and time of the other charge."
+          },
+          "minutes_apart": {
+            "type": "number",
+            "title": "Minutes Apart",
+            "description": "How many minutes separated this charge from the disputed one."
+          }
+        },
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "txn_datetime",
+          "minutes_apart"
+        ],
+        "title": "PossibleDuplicate"
+      },
+      "ReasonCode": {
+        "type": "string",
+        "enum": [
+          "10.4",
+          "12.6.1",
+          "13.1",
+          "13.2",
+          "13.3",
+          "13.6",
+          "N/A"
+        ],
+        "title": "ReasonCode",
+        "description": "Visa reason codes DisputeDesk uses (N/A = complaint is unclear)."
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "description": "The dispute that was assessed."
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code",
+            "description": "The reason code the dispute was assessed under."
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation",
+            "description": "One of file_chargeback, deny, request_more_info or escalate. A human analyst makes the final decision."
+          },
+          "rule_applied": {
+            "type": "string",
+            "title": "Rule Applied",
+            "description": "The decision rule that produced this recommendation, in plain English."
+          },
+          "confidence": {
+            "type": "string",
+            "title": "Confidence",
+            "description": "High (4 checks passed), Medium (3) or Low (2 or fewer)."
+          },
+          "confidence_points": {
+            "type": "integer",
+            "title": "Confidence Points",
+            "description": "How many of the 4 checks passed."
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/Check"
+            },
+            "type": "array",
+            "title": "Checks",
+            "description": "The 4 checks behind the confidence score: within time limits, evidence found, history fits the claim, reason code clear."
+          },
+          "key_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Key Evidence",
+            "description": "2 to 4 facts, with IDs, dates and amounts, that support the recommendation."
+          },
+          "customer_message_hint": {
+            "type": "string",
+            "title": "Customer Message Hint",
+            "description": "What the customer should be told or asked, in plain English, for the letter writer."
+          }
+        },
+        "type": "object",
+        "required": [
+          "dispute_id",
+          "reason_code",
+          "recommendation",
+          "rule_applied",
+          "confidence",
+          "confidence_points",
+          "checks",
+          "key_evidence",
+          "customer_message_hint"
+        ],
+        "title": "RecommendationResponse"
+      },
+      "RefundRecord": {
+        "properties": {
+          "refund_id": {
+            "type": "string",
+            "title": "Refund Id",
+            "description": "Unique identifier for this refund."
+          },
+          "refund_date": {
+            "type": "string",
+            "title": "Refund Date",
+            "description": "Date the refund was processed (YYYY-MM-DD)."
+          },
+          "amount_usd": {
+            "type": "number",
+            "title": "Amount Usd",
+            "description": "Amount refunded in US dollars."
+          }
+        },
+        "type": "object",
+        "required": [
+          "refund_id",
+          "refund_date",
+          "amount_usd"
+        ],
+        "title": "RefundRecord"
+      },
+      "ShipmentRecord": {
+        "properties": {
+          "shipment_id": {
+            "type": "string",
+            "title": "Shipment Id",
+            "description": "Unique identifier for this shipment."
+          },
+          "carrier": {
+            "type": "string",
+            "title": "Carrier",
+            "description": "Shipping carrier (e.g. FedEx, UPS)."
+          },
+          "shipped_date": {
+            "type": "string",
+            "title": "Shipped Date",
+            "description": "Date the item was shipped, or null if not yet shipped.",
+            "nullable": true
+          },
+          "expected_delivery_date": {
+            "type": "string",
+            "title": "Expected Delivery Date",
+            "description": "Date the item was expected to arrive."
+          },
+          "delivered_date": {
+            "type": "string",
+            "title": "Delivered Date",
+            "description": "Actual delivery date, or null if not yet delivered.",
+            "nullable": true
+          },
+          "delivery_status": {
+            "type": "string",
+            "title": "Delivery Status",
+            "description": "Current status: 'delivered', 'in_transit', 'lost', or 'not_shipped'."
+          },
+          "proof_of_delivery": {
+            "type": "boolean",
+            "title": "Proof Of Delivery",
+            "description": "True if the carrier recorded proof of delivery (e.g. a signature or photo)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "shipment_id",
+          "carrier",
+          "shipped_date",
+          "expected_delivery_date",
+          "delivered_date",
+          "delivery_status",
+          "proof_of_delivery"
+        ],
+        "title": "ShipmentRecord"
+      },
+      "TransactionResponse": {
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id",
+            "description": "Unique identifier for this transaction (e.g. TXN-000001)."
+          },
+          "card_id": {
+            "type": "string",
+            "title": "Card Id",
+            "description": "The card that was charged."
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "The customer who owns the card."
+          },
+          "merchant_id": {
+            "type": "string",
+            "title": "Merchant Id",
+            "description": "The merchant that processed the charge."
+          },
+          "merchant_name": {
+            "type": "string",
+            "title": "Merchant Name",
+            "description": "Plain-English name of the merchant."
+          },
+          "merchant_category": {
+            "type": "string",
+            "title": "Merchant Category",
+            "description": "Type of business (e.g. coffee_shop, online_retail)."
+          },
+          "txn_datetime": {
+            "type": "string",
+            "title": "Txn Datetime",
+            "description": "Date and time the transaction occurred."
+          },
+          "amount_usd": {
+            "type": "number",
+            "title": "Amount Usd",
+            "description": "Charge amount in US dollars."
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "Currency of the charge (always USD in this prototype)."
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel",
+            "description": "How the charge was made: 'in_store', 'online', or 'recurring'."
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id",
+            "description": "Device used for online purchases. Null for in-store charges.",
+            "nullable": true
+          },
+          "shipping_address_id": {
+            "type": "string",
+            "title": "Shipping Address Id",
+            "description": "Shipping address for online orders of physical goods. Null otherwise.",
+            "nullable": true
+          },
+          "subscription_id": {
+            "type": "string",
+            "title": "Subscription Id",
+            "description": "Subscription this charge belongs to, if it is a recurring charge.",
+            "nullable": true
+          },
+          "subscription_start_date": {
+            "type": "string",
+            "title": "Subscription Start Date",
+            "description": "Date the subscription started. Null if not a recurring charge.",
+            "nullable": true
+          },
+          "subscription_cancelled_date": {
+            "type": "string",
+            "title": "Subscription Cancelled Date",
+            "description": "Date the subscription was cancelled, or null if it is still active.",
+            "nullable": true
+          },
+          "statement_date": {
+            "type": "string",
+            "title": "Statement Date",
+            "description": "Date of the first card statement that showed this charge."
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "'posted' or 'refunded'."
+          },
+          "card_type": {
+            "type": "string",
+            "title": "Card Type",
+            "description": "'credit' or 'debit'."
+          },
+          "refunds": {
+            "items": {
+              "$ref": "#/components/schemas/RefundRecord"
+            },
+            "type": "array",
+            "title": "Refunds",
+            "description": "Any refunds that have been applied to this transaction."
+          },
+          "possible_duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/PossibleDuplicate"
+            },
+            "type": "array",
+            "title": "Possible Duplicates",
+            "description": "Other charges on the same card at the same merchant for the same amount within 24 hours. An empty list means no duplicates were found."
+          }
+        },
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "card_id",
+          "customer_id",
+          "merchant_id",
+          "merchant_name",
+          "merchant_category",
+          "txn_datetime",
+          "amount_usd",
+          "currency",
+          "channel",
+          "device_id",
+          "shipping_address_id",
+          "subscription_id",
+          "subscription_start_date",
+          "subscription_cancelled_date",
+          "statement_date",
+          "status",
+          "card_type",
+          "refunds",
+          "possible_duplicates"
+        ],
+        "title": "TransactionResponse"
+      },
+      "TransactionSummary": {
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id",
+            "description": "Unique transaction identifier."
+          },
+          "merchant_id": {
+            "type": "string",
+            "title": "Merchant Id",
+            "description": "Merchant that received the payment."
+          },
+          "merchant_name": {
+            "type": "string",
+            "title": "Merchant Name",
+            "description": "Plain-English name of the merchant."
+          },
+          "txn_datetime": {
+            "type": "string",
+            "title": "Txn Datetime",
+            "description": "Date and time of the transaction."
+          },
+          "amount_usd": {
+            "type": "number",
+            "title": "Amount Usd",
+            "description": "Amount charged in US dollars."
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel",
+            "description": "'in_store', 'online', or 'recurring'."
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id",
+            "description": "Device used for online purchases.",
+            "nullable": true
+          },
+          "shipping_address_id": {
+            "type": "string",
+            "title": "Shipping Address Id",
+            "description": "Shipping address for physical goods orders.",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "merchant_id",
+          "merchant_name",
+          "txn_datetime",
+          "amount_usd",
+          "channel",
+          "device_id",
+          "shipping_address_id"
+        ],
+        "title": "TransactionSummary"
+      }
+    }
+  }
+}

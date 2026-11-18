@@ -4,3 +4,7 @@ __pycache__/
 .env
 
 # data/disputedesk.db is intentionally NOT ignored – we commit it
+data/activity.db
+
+# macOS metadata
+.DS_Store
