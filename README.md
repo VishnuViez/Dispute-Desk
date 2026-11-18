@@ -4,6 +4,37 @@ DisputeDesk is a prototype AI agent that helps a bank's card dispute analyst inv
 
 Built for the IBM SkillsBuild AI Experiential Learning Lab (US Fall 2026), track: Revolutionizing Banking & Financial Services.
 
+---
+
+## Architecture
+
+```
+Analyst ── Orchestrate chat ── DisputeDesk (supervisor, IBM cloud)
+                                   │ hands work to 4 specialist agents
+                                   │ (Intake, Evidence Investigator,
+                                   │  Compliance Agent, Letter Writer)
+                                   │ they call tools in disputedesk_tools_openapi.json
+                                   ▼
+               Cloudflare tunnel (https://….trycloudflare.com)
+                                   ▼
+          FastAPI on the team laptop, port 8000  (/tools/*)
+                                   ▼
+          data/disputedesk.db (read-only)  +  data/activity.db (activity log)
+                                   ▲
+   Analyst dashboard in the browser: http://localhost:8000  (/api/*)
+   – the dashboard never needs the tunnel; it talks directly to localhost.
+```
+
+**Key design choices:**
+
+- The lab's cloud accounts do not support hosting, so the API runs on a laptop and the tunnel gives Orchestrate a public HTTPS address.
+- Deadlines and the final recommendation are plain code (no AI) so results are deterministic and testable.
+- The dashboard reads from both the read-only SQLite data DB and a separate writable activity DB (`data/activity.db`).
+
+Detailed docs: [`agent/ORCHESTRATE_SETUP.md`](agent/ORCHESTRATE_SETUP.md) · [`docs/sources.md`](docs/sources.md)
+
+---
+
 ## Setup
 
 **1. Create a virtual environment**
@@ -30,48 +61,77 @@ pip install -r requirements.txt
 python data/generate_data.py
 ```
 
-**4. Start the API**
+---
 
-```bash
-# macOS / Linux
-uvicorn backend.app.main:app --reload
+## Running
 
-# Windows
-uvicorn backend.app.main:app --reload
+### Run order for a full session
+
+```
+Terminal 1 – start the API (port 8000)
+    uvicorn backend.app.main:app --port 8000
+
+Terminal 2 – give it a public HTTPS address (copy the *.trycloudflare.com URL)
+    cloudflared tunnel --url http://localhost:8000
+
+Terminal 3 – write the OpenAPI file Orchestrate imports (paste the tunnel URL)
+    python agent/export_openapi.py --server-url https://YOUR-ADDRESS.trycloudflare.com
 ```
 
-The API will be available at http://127.0.0.1:8000. Interactive docs at http://127.0.0.1:8000/docs.
+Then import `agent/disputedesk_tools_openapi.json` in Orchestrate (Toolset → Add tool → OpenAPI file).
 
-**5. Run tests**
+### Analyst dashboard
+
+Open **http://localhost:8000** in a browser on the same laptop. The dashboard does not go through the tunnel — it talks directly to the local API on port 8000.
+
+### Run tests
 
 ```bash
 pytest
 ```
 
-## Tools API
+---
 
-All endpoints are under `/tools`. The API returns JSON. Unknown IDs return `404`; malformed input returns `422`.
-Interactive docs: http://127.0.0.1:8000/docs · OpenAPI spec: http://127.0.0.1:8000/openapi.json
+## Whenever the tunnel address changes
+
+Every time `cloudflared` restarts it gets a new address. Update Orchestrate before the next session:
+
+1. Copy the new `https://….trycloudflare.com` address from Terminal 2.
+2. Re-run the export: `python agent/export_openapi.py --server-url https://NEW-ADDRESS.trycloudflare.com`
+3. In Orchestrate → Toolset → Add tool → OpenAPI file → import `agent/disputedesk_tools_openapi.json` again.
+4. Check each agent still has its tools and re-deploy the supervisor.
+
+To avoid this mid-demo, keep the tunnel window open from testing through recording.
 
 ---
 
-### `GET /tools/disputes/{dispute_id}` — `get_dispute`
+## Tools API (`/tools`)
 
-Look up a dispute and find out whether the card is credit or debit.
+All endpoints return JSON. Unknown IDs return `404`; malformed input returns `422`.
+Interactive docs: http://localhost:8000/docs · OpenAPI spec: http://localhost:8000/openapi.json
 
-**Example request**
+| Endpoint | Operation ID | What it does |
+|---|---|---|
+| `GET /tools/disputes/{dispute_id}` | `get_dispute` | Dispute record and card type |
+| `GET /tools/transactions/{transaction_id}` | `get_transaction` | Transaction, duplicates within 24 h, subscription dates, refunds |
+| `GET /tools/customers/{customer_id}/history` | `get_customer_history` | Purchase history and friendly-fraud signals |
+| `GET /tools/merchants/{merchant_id}` | `get_merchant_info` | Merchant, refund policy and optional shipment record |
+| `GET /tools/disputes/{dispute_id}/deadline-check?reason_code=…` | `check_deadline` | 120-day card network limit, 60-day Reg Z / Reg E limit, `too_early` flag |
+| `GET /tools/disputes/{dispute_id}/recommendation?reason_code=…` | `recommend_outcome` | Rule-based recommendation, 4 confidence checks, key evidence |
+| `POST /tools/disputes/{dispute_id}/letter-draft` | `record_letter_draft` | Saves a drafted customer letter for analyst review in the dashboard |
+
+### Example: get_dispute
+
 ```
 GET /tools/disputes/DSP-0021
 ```
-
-**Example response** _(shortened)_
 ```json
 {
   "dispute_id": "DSP-0021",
   "transaction_id": "TXN-000502",
   "customer_id": "CUST-0001",
   "filed_date": "2026-10-10",
-  "complaint_text": "I was charged twice at a coffee shop. Both charges are $6.50 and I only bought one drink.",
+  "complaint_text": "I was charged twice at a coffee shop…",
   "status": "open",
   "card_type": "credit"
 }
@@ -79,153 +139,38 @@ GET /tools/disputes/DSP-0021
 
 ---
 
-### `GET /tools/transactions/{transaction_id}` — `get_transaction`
-
-Full transaction details including merchant name, card type, subscription dates, refunds, and any duplicate charges within 24 hours.
-
-**Example request**
-```
-GET /tools/transactions/TXN-000502
-```
-
-**Example response** _(shortened)_
-```json
-{
-  "transaction_id": "TXN-000502",
-  "merchant_name": "Bramble & Bean Coffee",
-  "merchant_category": "coffee_shop",
-  "txn_datetime": "2026-10-01T09:14:00",
-  "amount_usd": 6.5,
-  "channel": "in_store",
-  "card_type": "credit",
-  "refunds": [],
-  "possible_duplicates": [
-    { "transaction_id": "TXN-000501", "txn_datetime": "2026-10-01T09:14:00", "minutes_apart": 2.0 }
-  ]
-}
-```
-
----
-
-### `GET /tools/customers/{customer_id}/history` — `get_customer_history`
-
-Account open date and up to 50 recent transactions (newest first). Add `?merchant_id=…&transaction_id=…` to also get `friendly_fraud_signals`.
-
-**Example request — with fraud signals**
-```
-GET /tools/customers/CUST-0024/history?merchant_id=MERCH-009&transaction_id=TXN-000531
-```
-
-**Example response** _(shortened)_
-```json
-{
-  "customer_id": "CUST-0024",
-  "account_open_date": "2024-03-10",
-  "transactions": [ "…up to 50 items…" ],
-  "friendly_fraud_signals": {
-    "prior_undisputed_with_merchant": 3,
-    "same_device_count": 3,
-    "same_address_count": 3,
-    "device_seen_before": true,
-    "address_seen_before": true,
-    "prior_disputes_count": 2,
-    "prior_disputes_lost": 2,
-    "summary": "This customer has 3 earlier undisputed purchase(s) at this merchant …"
-  }
-}
-```
-
----
-
-### `GET /tools/merchants/{merchant_id}` — `get_merchant_info`
-
-Merchant name, category, online flag, and refund policy. Add `?transaction_id=…` to include the shipment record for that order.
-
-**Example request — with shipment**
-```
-GET /tools/merchants/MERCH-008?transaction_id=TXN-000508
-```
-
-**Example response** _(shortened)_
-```json
-{
-  "merchant_id": "MERCH-008",
-  "name": "Veldt Supply Co.",
-  "category": "online_retail",
-  "is_online": true,
-  "refund_policy": "Returns accepted within 30 days; customer pays return shipping.",
-  "shipment": {
-    "carrier": "UPS",
-    "shipped_date": "2026-08-12",
-    "expected_delivery_date": "2026-08-20",
-    "delivered_date": null,
-    "delivery_status": "lost",
-    "proof_of_delivery": false
-  }
-}
-```
-
----
-
-### `GET /tools/disputes/{dispute_id}/deadline-check?reason_code=…` — `check_deadline`
-
-Plain-code deadline check: card network 120-day limit (counted from the expected delivery date for 13.1), the 60-day Reg Z / Reg E notice limit, `too_early` for 13.1, and the bank's own response deadlines.
-
-**Example request**
-```
-GET /tools/disputes/DSP-0049/deadline-check?reason_code=13.1
-```
-
----
-
 ## Dashboard API (`/api`)
 
-The `/api` endpoints power the analyst dashboard. They are **not** exposed to watsonx Orchestrate.
-Activity is stored in `data/activity.db` (not committed; created automatically on first request).
+The `/api` endpoints power the analyst dashboard. They are **not** in the OpenAPI file that Orchestrate imports, so agents never see them. Activity is stored in `data/activity.db` (not committed; created automatically on first request).
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/stats` | Open dispute count, breakdowns by card type / recommendation / reason code, and cases near the 120-day deadline. |
-| `GET /api/cases` | List of disputes with optional filters (`status`, `card_type`, `reason_code`, `recommendation`, `deadline_within_days`, `q`) and `sort`. |
-| `GET /api/cases/{dispute_id}` | Full case page: dispute, transaction, merchant, shipment, friendly-fraud signals, deadline, latest recommendation, and all analyst decisions. |
-| `POST /api/cases/{dispute_id}/decision` | Record an analyst decision (`approve`, `edit`, or `override`). `reason` is required for edit and override. |
-| `GET /api/activity?since=<id>` | Tool calls newer than a given row ID, with a `stage` label (Intake / Evidence / Compliance / Decision). |
-| `GET /api/audit` | Tool calls and analyst decisions merged into a single timeline. |
-| `GET /api/evaluation` | Compare saved recommendations against `data/cases.csv`; returns accuracy and per-case match results. |
-
-**Example – stats**
-```
-GET /api/stats
-```
-```json
-{
-  "open_disputes": 30,
-  "by_card_type": {"credit": 20, "debit": 10},
-  "by_recommendation": {"not_investigated": 30},
-  "by_reason_code": {"not_investigated": 30},
-  "near_deadline": 3
-}
-```
-
-**Example – post decision**
-```
-POST /api/cases/DSP-0021/decision
-{ "decision": "approve", "final_outcome": "file_chargeback", "analyst": "analyst-1" }
-```
+| `GET /api/stats` | Open dispute count, breakdowns by card type / recommendation / reason code, cases near the 120-day deadline |
+| `GET /api/cases` | List of disputes with optional filters (`status`, `card_type`, `reason_code`, `recommendation`, `deadline_within_days`, `q`) and `sort` |
+| `GET /api/cases/{dispute_id}` | Full case page: dispute, transaction, merchant, shipment, friendly-fraud signals, deadline, recommendation, decisions and the latest letter draft |
+| `POST /api/cases/{dispute_id}/decision` | Record an analyst decision (`approve`, `edit`, or `override`). `reason` is required for edit and override |
+| `GET /api/activity?since=<id>` | Tool calls newer than a given row ID, with a `stage` label (Intake / Evidence / Compliance / Decision / Letter) |
+| `GET /api/audit` | Tool calls and analyst decisions merged into a single timeline |
+| `GET /api/evaluation` | Compare saved recommendations against `data/cases.csv`; returns accuracy and per-case match results |
 
 ---
 
 ## Connect to watsonx Orchestrate
 
-Full steps and every value to paste are in `agent/ORCHESTRATE_SETUP.md`.
+Full instructions, agent descriptions, every value to paste in and the test checklist are in **[`agent/ORCHESTRATE_SETUP.md`](agent/ORCHESTRATE_SETUP.md)**.
 
-```bash
-# Terminal 1 – start the API
-uvicorn backend.app.main:app --port 8000
-# Terminal 2 – give it a public HTTPS address
-cloudflared tunnel --url http://localhost:8000
-# Terminal 3 – write the file Orchestrate imports (use the address from Terminal 2)
-python agent/export_openapi.py --server-url https://YOUR-ADDRESS.trycloudflare.com
-```
+The team's Orchestrate instance is at `ap-south-1.dl.watson-orchestrate.ibm.com`. All agents use **GPT-OSS 120B – OpenAI (via Groq)** (the only model available in the lab account).
 
-This creates `agent/disputedesk_tools_openapi.json` (OpenAPI 3.0, 5 tools).
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Orchestrate says "tool not found" or tools time out | Check that `uvicorn` and `cloudflared` are both running. Run the export and re-import the tools with the current tunnel address. |
+| `GET /` returns 404 or a plain JSON error | The UI files in `ui/` were not found. Make sure you are running from the repo root and that `ui/index.html` exists. |
+| `GET /health` shows `"database": "missing"` | Run `python data/generate_data.py` first to create `data/disputedesk.db`. |
+| Ad blocker warning or Orchestrate can't reach the API | The browser or a corporate proxy is blocking `trycloudflare.com`. Disable the ad blocker for that domain or use a different network. The dashboard itself is not affected because it connects directly to `localhost:8000`. |
+| Orchestrate answers without calling specialist agents | Check all four collaborators are listed under Toolset → Agents and that each one is deployed. Try a larger model for the supervisor only. |
+| Wrong tunnel address after a restart | Re-run the export and re-import in Orchestrate (see "Whenever the tunnel address changes" above). |
+| `pytest` fails with `ModuleNotFoundError` | Make sure the virtual environment is active (`source .venv/bin/activate`) and `pip install -r requirements.txt` has been run. |
