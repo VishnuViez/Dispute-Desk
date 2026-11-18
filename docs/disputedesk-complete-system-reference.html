@@ -1,0 +1,371 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DisputeDesk — Complete System Reference</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.65;background:#f4f6f9;color:#1f2328}
+.wrap{max-width:760px;margin:0 auto;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:700;color:#0f2140;margin-bottom:.3rem}
+.subtitle{color:#57606a;font-size:.9rem;margin-bottom:2rem}
+h2{font-size:1rem;font-weight:700;color:#0f2140;margin:2rem 0 .6rem;padding-bottom:.4rem;border-bottom:2px solid #d1d5db}
+h3{font-size:.88rem;font-weight:700;color:#1f2328;margin:1.2rem 0 .4rem}
+p{margin-bottom:.7rem;font-size:.88rem}
+ul,ol{padding-left:1.3rem;margin-bottom:.7rem;font-size:.88rem}
+li{margin-bottom:.25rem}
+code{background:#f0f4ff;border:1px solid #dbeafe;border-radius:3px;padding:.1rem .4rem;font-size:.8rem;font-family:"SFMono-Regular",Consolas,monospace;color:#1d4ed8}
+pre{background:#1e293b;color:#e2e8f0;border-radius:6px;padding:1rem 1.2rem;font-size:.8rem;font-family:"SFMono-Regular",Consolas,monospace;overflow-x:auto;margin-bottom:.8rem;line-height:1.5}
+pre .c{color:#94a3b8}
+pre .k{color:#f59e0b}
+pre .s{color:#86efac}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+thead th{background:#0f2140;color:#fff;padding:.45rem .8rem;text-align:left;font-weight:600}
+tbody td{padding:.4rem .8rem;border-bottom:1px solid #e5e7eb;vertical-align:top}
+tbody tr:nth-child(even){background:#f7f8fa}
+tbody td:first-child{font-family:"SFMono-Regular",Consolas,monospace;color:#1d4ed8;white-space:nowrap;font-size:.78rem}
+
+/* Badges */
+.badge{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.b-get{background:#dbeafe;color:#1d4ed8}
+.b-post{background:#dcfce7;color:#15803d}
+.b-tools{background:#fef3c7;color:#92400e}
+.b-api{background:#ede9fe;color:#5b21b6}
+.b-ui{background:#f0fdf4;color:#15803d}
+
+/* Callouts */
+.callout{border-left:4px solid #d97706;background:#fffbeb;padding:.7rem 1rem;border-radius:0 6px 6px 0;margin-bottom:.8rem;font-size:.82rem}
+.callout.blue{border-color:#2563eb;background:#eff6ff}
+.callout.green{border-color:#16a34a;background:#f0fdf4}
+
+/* Flow */
+.flow{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin:.6rem 0;font-size:.8rem}
+.fbox{background:#0f2140;color:#fff;padding:.35rem .75rem;border-radius:4px;white-space:nowrap}
+.farrow{color:#9ca3af;font-size:1rem}
+
+/* Number steps */
+.steps{counter-reset:step;list-style:none;padding-left:0}
+.steps li{counter-increment:step;padding-left:2.2rem;position:relative;margin-bottom:.6rem;font-size:.88rem}
+.steps li::before{content:counter(step);position:absolute;left:0;top:.05rem;background:#0f2140;color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #e5e7eb;text-align:center;font-size:.72rem;color:#9ca3af}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>DisputeDesk — Complete System Reference</h1>
+<p class="subtitle">What it is · How every piece works · Where every file lives · How to run it</p>
+
+
+<h2>1 · What DisputeDesk Is</h2>
+
+<p>DisputeDesk is a prototype AI-assisted tool that helps a bank's card-dispute analyst investigate credit and debit card disputes faster and more consistently.</p>
+
+<p>When a customer claims a charge was wrong — fraud, item not received, duplicate charge, subscription cancelled — an analyst must decide within tight regulatory deadlines whether to <strong>file a chargeback</strong>, <strong>deny</strong> the claim, ask for <strong>more information</strong>, or <strong>escalate</strong> to a senior reviewer. DisputeDesk automates the evidence-gathering and rule-checking so the analyst can focus on the final judgement.</p>
+
+<div class="callout green">
+<strong>Key design principle:</strong> The AI never denies a customer on its own. It recommends; a human analyst always makes the final decision.
+</div>
+
+<p>Built for the IBM SkillsBuild AI Experiential Learning Lab — track: Revolutionising Banking &amp; Financial Services.</p>
+
+
+<h2>2 · High-Level Architecture</h2>
+
+<div class="flow">
+  <div class="fbox">Customer complaint</div>
+  <span class="farrow">→</span>
+  <div class="fbox">IBM watsonx Orchestrate<br /><span style="font-size:.7rem;opacity:.7">AI agent (Granite model)</span></div>
+  <span class="farrow">→</span>
+  <div class="fbox">FastAPI backend<br /><span style="font-size:.7rem;opacity:.7">/tools/* endpoints</span></div>
+  <span class="farrow">→</span>
+  <div class="fbox">SQLite database<br /><span style="font-size:.7rem;opacity:.7">disputedesk.db</span></div>
+</div>
+<div class="flow">
+  <div class="fbox" style="background:#7c3aed">Analyst browser</div>
+  <span class="farrow">→</span>
+  <div class="fbox" style="background:#7c3aed">Dashboard SPA<br /><span style="font-size:.7rem;opacity:.7">ui/index.html</span></div>
+  <span class="farrow">→</span>
+  <div class="fbox" style="background:#7c3aed">FastAPI backend<br /><span style="font-size:.7rem;opacity:.7">/api/* endpoints</span></div>
+</div>
+
+<p>There are <strong>two separate consumers</strong> of the same FastAPI server:</p>
+<ul>
+  <li><strong>watsonx Orchestrate (the AI agent)</strong> — only sees <code>/tools/*</code> endpoints exported as an OpenAPI spec. It calls them like function calls to gather evidence.</li>
+  <li><strong>The analyst's browser</strong> — talks to <code>/api/*</code> endpoints and gets the HTML dashboard served from <code>/</code>.</li>
+</ul>
+
+
+<h2>3 · Repository Layout</h2>
+
+<table>
+<thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>requirements.txt</td><td>Python dependencies (fastapi, uvicorn, pydantic≥2, pytest, httpx)</td></tr>
+<tr><td>.gitignore</td><td>Ignores .venv, __pycache__, .env — but commits data/disputedesk.db</td></tr>
+<tr><td>pytest.ini</td><td>Tells pytest to look in backend/tests/ and data/tests/</td></tr>
+<tr><td>README.md</td><td>Project overview and quick-start instructions</td></tr>
+<tr><td>docs/PROJECT_BRIEF.md</td><td>Source of truth — schema, reason codes, time limits, rules</td></tr>
+<tr><td>docs/sources.md</td><td>Table of every external source used (Reg Z, Reg E, etc.)</td></tr>
+<tr><td>data/generate_data.py</td><td>Generates all synthetic test data deterministically (seed 42)</td></tr>
+<tr><td>data/disputedesk.db</td><td>SQLite database — committed so everyone uses identical data</td></tr>
+<tr><td>data/cases.csv</td><td>Answer key: 30 open disputes with expected_outcome column</td></tr>
+<tr><td>data/rules/</td><td>Plain-English summaries of Reg Z and Reg E rules</td></tr>
+<tr><td>data/tests/</td><td>Tests that verify the synthetic data is correct</td></tr>
+<tr><td>data/activity.db</td><td>Auto-created SQLite — records every agent tool call and analyst decision</td></tr>
+<tr><td>backend/app/main.py</td><td>FastAPI app entry point — wires everything together</td></tr>
+<tr><td>backend/app/db.py</td><td>Opens disputedesk.db as a read-only FastAPI dependency</td></tr>
+<tr><td>backend/app/activity_db.py</td><td>Opens activity.db (writable) for logging</td></tr>
+<tr><td>backend/app/middleware.py</td><td>Logs every /tools/* request to activity.db automatically</td></tr>
+<tr><td>backend/app/models.py</td><td>Shared Pydantic models (HealthResponse)</td></tr>
+<tr><td>backend/app/routers/tools.py</td><td>4 agent tool endpoints: get_dispute, get_transaction, get_customer_history, get_merchant_info</td></tr>
+<tr><td>backend/app/routers/deadline.py</td><td>check_deadline tool endpoint</td></tr>
+<tr><td>backend/app/routers/recommendation.py</td><td>recommend_outcome tool endpoint (also saves result to activity.db)</td></tr>
+<tr><td>backend/app/routers/api.py</td><td>7 dashboard API endpoints (/api/*) — not visible to Orchestrate</td></tr>
+<tr><td>backend/tests/</td><td>5 test files, 110 tests total</td></tr>
+<tr><td>agent/export_openapi.py</td><td>Exports a filtered OpenAPI spec containing only the 6 /tools operations</td></tr>
+<tr><td>agent/disputedesk_tools_openapi.json</td><td>The exported spec — uploaded to watsonx Orchestrate</td></tr>
+<tr><td>agent/ORCHESTRATE_SETUP.md</td><td>Step-by-step guide to configure the agent in Orchestrate</td></tr>
+<tr><td>agent/instructions_*.txt</td><td>System prompt instructions for each agent sub-role</td></tr>
+<tr><td>ui/index.html</td><td>5-tab single-page analyst dashboard (no build step)</td></tr>
+<tr><td>ui/config.js</td><td>Runtime config — set ORCHESTRATE_CHAT_URL here</td></tr>
+</tbody>
+</table>
+
+
+<h2>4 · The Database (data/disputedesk.db)</h2>
+
+<p>SQLite. All synthetic data, generated once with <code>random.seed(42)</code>, so every run is identical. The "world today" is <code>2026-10-15</code>.</p>
+
+<table>
+<thead><tr><th>Table</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td>customers</td><td>IDs like CUST-0001, account open date</td></tr>
+<tr><td>cards</td><td>CARD-0001, linked customer, Visa credit or debit, fake last-4</td></tr>
+<tr><td>merchants</td><td>MERCH-001, fictional name, category (coffee_shop, online_retail…), is_online, refund policy</td></tr>
+<tr><td>transactions</td><td>TXN-000001, amount, datetime, channel (in_store/online/recurring), device_id, shipping_address_id, statement_date</td></tr>
+<tr><td>subscriptions</td><td>SUB-0001, monthly amount, start_date, cancelled_date (NULL if active)</td></tr>
+<tr><td>shipments</td><td>Shipment_id, carrier, shipped/expected/delivered dates, delivery_status, proof_of_delivery</td></tr>
+<tr><td>refunds</td><td>Refund rows linked to transactions</td></tr>
+<tr><td>disputes</td><td>DSP-0001, complaint text in the customer's own words, status (open/resolved_customer/resolved_merchant/withdrawn)</td></tr>
+</tbody>
+</table>
+
+<p>The database is <strong>read-only</strong> for the FastAPI app. A second database — <code>data/activity.db</code> — is created automatically at runtime and stores tool call logs and analyst decisions.</p>
+
+
+<h2>5 · The 30 Test Cases</h2>
+
+<p>There are exactly 30 open disputes in the database, covering 8 scenario types:</p>
+
+<table>
+<thead><tr><th>Scenario</th><th>Visa Code</th><th>Cases</th><th>Expected outcomes</th></tr></thead>
+<tbody>
+<tr><td>Duplicate charge</td><td>12.6.1</td><td>4</td><td>3 file_chargeback, 1 request_more_info</td></tr>
+<tr><td>Item not received</td><td>13.1</td><td>5</td><td>3 file_chargeback, 1 request_more_info, 1 deny</td></tr>
+<tr><td>Charged after cancellation</td><td>13.2</td><td>4</td><td>3 file_chargeback, 1 deny</td></tr>
+<tr><td>Not as described / defective</td><td>13.3</td><td>3</td><td>2 file_chargeback, 1 request_more_info</td></tr>
+<tr><td>Refund never arrived</td><td>13.6</td><td>3</td><td>2 file_chargeback, 1 deny</td></tr>
+<tr><td>Fraud – online purchase</td><td>10.4</td><td>7</td><td>4 file_chargeback, 3 escalate</td></tr>
+<tr><td>Filed too late</td><td>13.1/13.3/13.6</td><td>3</td><td>3 deny</td></tr>
+<tr><td>Unclear complaint</td><td>N/A</td><td>1</td><td>1 request_more_info</td></tr>
+</tbody>
+</table>
+
+<p><strong>Demo cases used in slides and video:</strong></p>
+<ul>
+  <li><strong>Demo A (DSP-0021)</strong> — "I was charged twice at a coffee shop." Two $6.50 charges 2 minutes apart. Expected: <code>file_chargeback</code>, code 12.6.1.</li>
+  <li><strong>Demo B</strong> — "I never made this $340 online order." Customer has 3 prior undisputed orders with same merchant, same device, same address. Expected: <code>escalate</code> (friendly-fraud signals), code 10.4.</li>
+  <li><strong>Demo C</strong> — "I want to dispute a charge from last spring." Filed 150 days after the transaction. Expected: <code>deny</code> (past 120-day limit), code 13.1.</li>
+</ul>
+
+
+<h2>6 · Backend Modules — What Each File Does</h2>
+
+<h3>backend/app/main.py — Entry point</h3>
+<p>Creates the FastAPI app, registers CORS (all origins — tighten before production), attaches the activity-log middleware, mounts all routers, registers the <code>/health</code> endpoint, and finally mounts <code>ui/</code> as a static-file SPA at <code>/</code>. The SPA mount must be last so API routes take priority.</p>
+
+<h3>backend/app/db.py — Read-only data DB dependency</h3>
+<p>Reads the env var <code>DISPUTEDESK_DB</code> (defaults to <code>data/disputedesk.db</code> relative to the repo root). Opens the SQLite file in read-only URI mode, sets <code>row_factory = sqlite3.Row</code> so columns can be accessed by name, and yields the connection as a FastAPI dependency. It closes the connection after the request finishes. If the file doesn't exist it yields <code>None</code> instead of crashing, so <code>/health</code> can still return <code>{"database": "missing"}</code>.</p>
+
+<h3>backend/app/activity_db.py — Writable activity DB</h3>
+<p>Opens (or creates) <code>data/activity.db</code> (overridden by env var <code>ACTIVITY_DB</code>). Creates two tables on first run: <code>tool_calls</code> (every /tools/* request with timing and HTTP status) and <code>decisions</code> (every analyst approve/edit/override action). Returns a plain <code>sqlite3.Connection</code> — callers close it themselves.</p>
+
+<h3>backend/app/middleware.py — Activity log middleware</h3>
+<p>A Starlette middleware that wraps every request. For any request whose path starts with <code>/tools/</code> it records the tool name, dispute_id, transaction_id, HTTP status code, and duration in milliseconds into <code>tool_calls</code>. This happens automatically — the router code doesn't need to do anything.</p>
+
+<h3>backend/app/models.py — Shared Pydantic models</h3>
+<p>Currently holds <code>HealthResponse</code> (<code>status: str</code>, <code>database: str</code>). Router-specific models live in their own router files.</p>
+
+<h3>backend/app/routers/tools.py — 4 evidence-gathering tools</h3>
+<p>All mounted at <code>/tools</code>. These are the functions watsonx Orchestrate calls during an investigation:</p>
+<table>
+<thead><tr><th>Endpoint</th><th>Operation ID</th><th>What it returns</th></tr></thead>
+<tbody>
+<tr><td>GET /tools/disputes/{id}</td><td>get_dispute</td><td>Full dispute row + associated transaction, merchant, shipment, subscription, refunds, and customer history</td></tr>
+<tr><td>GET /tools/transactions/{id}</td><td>get_transaction</td><td>Transaction row + card, merchant, shipment, subscription details</td></tr>
+<tr><td>GET /tools/customers/{id}/history</td><td>get_customer_history</td><td>Up to 50 recent transactions, plus optional friendly-fraud signals when given a disputed_transaction_id and merchant_id</td></tr>
+<tr><td>GET /tools/merchants/{id}</td><td>get_merchant_info</td><td>Merchant details, plus shipment for a given transaction if transaction_id is passed</td></tr>
+</tbody>
+</table>
+
+<h3>backend/app/routers/deadline.py — Deadline checker tool</h3>
+<p>Mounted at <code>/tools</code>. Endpoint: <code>GET /tools/disputes/{id}/deadline?reason_code=…</code>, operation_id <code>check_deadline</code>. Given a dispute ID and a Visa reason code it computes:</p>
+<ul>
+  <li>The 120-day card-network filing deadline from the transaction date (or expected delivery date for code 13.1)</li>
+  <li>Days remaining (negative = already past)</li>
+  <li>The Regulation Z notice window (60-day customer notice for credit cards)</li>
+  <li>The Regulation E notice window (60-day customer notice for debit cards)</li>
+  <li>Whether the dispute was filed in time</li>
+</ul>
+
+<h3>backend/app/routers/recommendation.py — Recommendation tool</h3>
+<p>Mounted at <code>/tools</code>. Endpoint: <code>GET /tools/disputes/{id}/recommendation?reason_code=…</code>, operation_id <code>recommend_outcome</code>. This is the brain of the agent-side logic. It:</p>
+<ol class="steps">
+  <li>Loads all evidence for the dispute (transaction, shipment, refunds, signals, subscription, deadline)</li>
+  <li>Applies the rule for the given Visa reason code</li>
+  <li>Returns one of: <code>file_chargeback</code> / <code>deny</code> / <code>request_more_info</code> / <code>escalate</code></li>
+  <li>Returns a <code>confidence</code> (High/Medium/Low), the <code>rule_applied</code> in plain English, and a summary of the evidence used</li>
+  <li>Saves the result to <code>activity.db → recommendations</code> so the dashboard can display it</li>
+</ol>
+
+<h3>backend/app/routers/api.py — Dashboard API (7 endpoints)</h3>
+<p>All mounted at <code>/api</code>. These are only for the analyst's browser — Orchestrate never sees them because the OpenAPI export script filters them out.</p>
+<table>
+<thead><tr><th>Endpoint</th><th>What it returns</th></tr></thead>
+<tbody>
+<tr><td>GET /api/stats</td><td>Aggregate tiles: open disputes, by card type, by recommendation, by reason code, cases near deadline (≤14 days)</td></tr>
+<tr><td>GET /api/cases</td><td>Pageable, filterable, sortable list of disputes with days_to_deadline and latest recommendation</td></tr>
+<tr><td>GET /api/cases/{id}</td><td>Full case detail: dispute + transaction + shipment + subscription + refunds + friendly-fraud signals + deadline + latest recommendation + decision history</td></tr>
+<tr><td>POST /api/cases/{id}/decision</td><td>Record an analyst decision (approve / edit / override) with final outcome, reason, and analyst name</td></tr>
+<tr><td>GET /api/activity</td><td>Tool-call rows since a given ID (used for live polling by the dashboard)</td></tr>
+<tr><td>GET /api/audit</td><td>Tool calls + analyst decisions merged and sorted by timestamp — the full audit trail</td></tr>
+<tr><td>GET /api/evaluation</td><td>Compares saved recommendations against data/cases.csv answer key, returns accuracy score</td></tr>
+</tbody>
+</table>
+
+
+<h2>7 · The Analyst Dashboard (ui/)</h2>
+
+<p>A single HTML file with no build step. Loaded from <code>ui/index.html</code>, served by FastAPI's <code>StaticFiles</code> at <code>/</code>. Uses Chart.js (CDN) for charts. All styling is plain CSS.</p>
+
+<table>
+<thead><tr><th>Tab</th><th>What it shows</th></tr></thead>
+<tbody>
+<tr><td>Overview</td><td>4 stat tiles (open, investigated, escalated, deadlines at risk), bar chart by reason code, donut chart of recommendations, agent accuracy card vs. the answer key</td></tr>
+<tr><td>Case Queue</td><td>Full case table with filter dropdowns (status, card type, recommendation, deadline window), free-text search, sortable columns, colour-coded badges. Click a row to open the case.</td></tr>
+<tr><td>Case Detail</td><td>Customer's complaint quote, transaction and shipment facts, friendly-fraud signal dots, 4-point deadline timeline (transaction → statement → filed → network deadline), agent recommendation with 4 evidence checks ✅/❌, Approve / Edit / Override buttons (edit and override require a reason and analyst name), full decision history, "Investigate with DisputeDesk" button that copies the prompt and opens Orchestrate</td></tr>
+<tr><td>Agent Activity</td><td>5-stage pipeline (Intake → Evidence → Compliance → Decision → Letter) with the active stage highlighted. Polls /api/activity every 2 seconds. Shows a live list of tool calls with time, stage, tool name, dispute ID, HTTP status, and duration. Shows "Waiting for agents…" when idle.</td></tr>
+<tr><td>Audit Log</td><td>Merged timeline from /api/audit showing every tool call and analyst decision in chronological order. Filterable by dispute ID.</td></tr>
+</tbody>
+</table>
+
+<p><code>ui/config.js</code> holds one setting: <code>ORCHESTRATE_CHAT_URL</code>. Set it to your watsonx Orchestrate chat permalink so the "Investigate" button opens the agent directly.</p>
+
+
+<h2>8 · The Agent (agent/)</h2>
+
+<p>The AI part lives entirely in IBM watsonx Orchestrate — no AI code runs in this Python repo.</p>
+<table>
+<thead><tr><th>File</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>export_openapi.py</td><td>Builds a filtered OpenAPI 3.0 spec containing only the 6 /tools operations (excludes /api/*, /health). Run this whenever tool signatures change.</td></tr>
+<tr><td>disputedesk_tools_openapi.json</td><td>The exported spec. Upload this file to Orchestrate as a custom skill.</td></tr>
+<tr><td>ORCHESTRATE_SETUP.md</td><td>Step-by-step guide: create the skill, create the agent, paste the instructions, set the tunnel URL.</td></tr>
+<tr><td>instructions_intake.txt</td><td>System prompt for the Intake sub-agent (reads the complaint, picks a reason code)</td></tr>
+<tr><td>instructions_evidence.txt</td><td>System prompt for the Evidence sub-agent (calls get_dispute, get_transaction, get_customer_history, get_merchant_info)</td></tr>
+<tr><td>instructions_compliance.txt</td><td>System prompt for the Compliance sub-agent (calls check_deadline)</td></tr>
+<tr><td>instructions_supervisor.txt</td><td>System prompt for the Supervisor agent (orchestrates the sub-agents, calls recommend_outcome)</td></tr>
+<tr><td>instructions_letter_writer.txt</td><td>System prompt for drafting the customer-facing decision letter</td></tr>
+<tr><td>instructions_backup_single_agent.txt</td><td>Fallback: single-agent prompt that does everything in one pass</td></tr>
+</tbody>
+</table>
+
+
+<h2>9 · Tests — 110 Passing</h2>
+
+<table>
+<thead><tr><th>File</th><th>What it tests</th><th>Tests</th></tr></thead>
+<tbody>
+<tr><td>backend/tests/test_health.py</td><td>/health returns 200; "missing" when DB path doesn't exist</td><td>2</td></tr>
+<tr><td>backend/tests/test_tools.py</td><td>All 4 tool endpoints, demo cases A/B/C, all 30 open disputes, OpenAPI spec shape</td><td>~30</td></tr>
+<tr><td>backend/tests/test_deadline_and_export.py</td><td>check_deadline for all 6 reason codes, edge cases, export_openapi filters correctly</td><td>~20</td></tr>
+<tr><td>backend/tests/test_recommendation.py</td><td>recommend_outcome for all 8 scenario types, all 30 cases, confidence levels, saves to activity.db</td><td>~30</td></tr>
+<tr><td>backend/tests/test_api.py</td><td>All 7 /api/* endpoints, middleware logging, decision validation, evaluation accuracy, GET / returns HTML</td><td>~28</td></tr>
+<tr><td>data/tests/test_generated_data.py</td><td>DB schema, row counts, demo case data, Reg Z/E rules, no PII</td><td>~24</td></tr>
+</tbody>
+</table>
+
+
+<h2>10 · How to Run — Step by Step (macOS)</h2>
+
+<h3>First time setup</h3>
+<pre>
+<span class="c"># 1. Clone or open the repo</span>
+cd "/Users/vishnu/Desktop/IBM SkillaBuild/Dispute Desk"
+
+<span class="c"># 2. Create a virtual environment</span>
+python3 -m venv .venv
+source .venv/bin/activate
+
+<span class="c"># 3. Install dependencies</span>
+pip install -r requirements.txt
+
+<span class="c"># 4. (Optional) Regenerate synthetic data — only needed if you delete the DB</span>
+python3 data/generate_data.py
+</pre>
+
+<h3>Start the API + dashboard</h3>
+<pre>
+source .venv/bin/activate   <span class="c"># if not already activated</span>
+
+python3 -m uvicorn backend.app.main:app --reload --port 8000
+</pre>
+<p>Then open <strong>http://localhost:8000</strong> in your browser for the analyst dashboard.<br />
+The interactive API docs are at <strong>http://localhost:8000/docs</strong>.</p>
+
+<h3>Run all tests</h3>
+<pre>
+python3 -m pytest          <span class="c"># runs all 110 tests</span>
+python3 -m pytest -v       <span class="c"># verbose — shows each test name</span>
+python3 -m pytest backend/tests/test_tools.py  <span class="c"># one file only</span>
+</pre>
+
+<h3>Re-export the OpenAPI spec for Orchestrate</h3>
+<pre>
+python3 agent/export_openapi.py
+<span class="c"># writes agent/disputedesk_tools_openapi.json</span>
+</pre>
+
+<h3>Environment variables (optional overrides)</h3>
+<table>
+<thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>DISPUTEDESK_DB</td><td>data/disputedesk.db (repo root)</td><td>Path to the main SQLite database</td></tr>
+<tr><td>ACTIVITY_DB</td><td>data/activity.db (repo root)</td><td>Path to the writable activity log database</td></tr>
+</tbody>
+</table>
+
+
+<h2>11 · Git History — What Was Built and When</h2>
+
+<table>
+<thead><tr><th>Commit</th><th>What was added</th></tr></thead>
+<tbody>
+<tr><td>Repo scaffold and FastAPI backend skeleton</td><td>requirements.txt, .gitignore, pytest.ini, README, docs/sources.md, db.py, main.py, models.py, routers/tools.py (empty), test_health.py</td></tr>
+<tr><td>Synthetic data generator and 30 test cases</td><td>data/generate_data.py, data/disputedesk.db, data/cases.csv, data/tests/test_generated_data.py, data/README.md</td></tr>
+<tr><td>Four tool endpoints</td><td>routers/tools.py fully implemented (get_dispute, get_transaction, get_customer_history, get_merchant_info), test_tools.py</td></tr>
+<tr><td>check_deadline, recommend_outcome, Orchestrate setup</td><td>routers/deadline.py, routers/recommendation.py, agent/export_openapi.py, agent/ORCHESTRATE_SETUP.md, agent/instructions_*.txt, test_deadline_and_export.py, test_recommendation.py</td></tr>
+<tr><td>Dashboard backend — activity log + /api endpoints</td><td>activity_db.py, middleware.py, routers/api.py, test_api.py (initial), patched main.py and recommendation.py</td></tr>
+<tr><td>Analyst dashboard UI</td><td>ui/config.js, ui/index.html, StaticFiles mount in main.py, GET / tests in test_api.py</td></tr>
+</tbody>
+</table>
+
+<footer>Made with IBM Bob</footer>
+</div>
+</body>
+</html>
