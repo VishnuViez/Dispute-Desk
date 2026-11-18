@@ -1,0 +1,47 @@
+DisputeDesk – Card Network Dispute Rules (Team Summary)
+
+ABOUT THIS DOCUMENT
+The DisputeDesk team wrote this summary in our own words for a student prototype. It covers the Visa dispute reason codes we use, the evidence each one needs, and simplified time limits. It is not Visa's official text. Verify against Visa's public "Dispute Management Guidelines for Visa Merchants" (visa.com). All cards in the DisputeDesk prototype are Visa cards.
+
+1. REASON CODES WE USE
+
+10.4 – Other Fraud: Card-Absent Environment
+When it applies: the cardholder says they did not make or authorize an online, phone or mail-order purchase.
+Evidence to check: whether this customer used the device or shipping address before, earlier undisputed purchases with the same merchant, and the customer's past disputes.
+Warning signs that the customer may have made the purchase ("friendly fraud"): several earlier undisputed purchases from the same merchant using the same device and the same shipping address, or past disputes resolved in the merchant's favour. Such cases go to a senior analyst.
+Signs of genuine fraud: a device and shipping address never seen before for this customer, and no history with the merchant.
+
+12.6.1 – Duplicate Processing
+When it applies: the same card was charged more than once for the same purchase.
+Evidence: two or more charges with the same card, merchant and amount, close together in time (minutes). Charges several hours apart may be separate purchases, so the cardholder needs to confirm.
+
+13.1 – Merchandise or Services Not Received
+When it applies: the cardholder paid but the goods or service never arrived.
+Evidence: the shipment record – shipped date, expected delivery date, delivered date, delivery status and proof of delivery.
+The cardholder must wait until the expected delivery date has passed before disputing. If the carrier has proof of delivery to the cardholder's address, ask the cardholder for more information before filing.
+
+13.2 – Cancelled Recurring Transaction
+When it applies: a subscription or other recurring charge continued after the cardholder cancelled.
+Evidence: the subscription's cancellation date compared with the charge date. Only charges after the cancellation date qualify.
+
+13.3 – Not as Described or Defective Merchandise or Services
+When it applies: what arrived was broken, wrong, or different from how it was described.
+Evidence: the cardholder should first try to resolve it with the merchant (contact them or return the item). If they have not tried, ask them to do that first.
+
+13.6 – Credit Not Processed
+When it applies: the merchant promised a refund (credit) but it never posted.
+Evidence: refund records for the transaction. If a refund was already posted, there is nothing to dispute.
+
+2. TIME LIMITS (simplified for the prototype)
+Card network: most disputes must be raised within 120 days of the transaction date. For 13.1, count the 120 days from the expected delivery date.
+Credit cards – Regulation Z (12 CFR 1026.13): the cardholder's notice must arrive within 60 days after the first statement that showed the charge. The bank must acknowledge it within 30 days and resolve it within two complete billing cycles, and never later than 90 days.
+Debit cards – Regulation E (12 CFR 1005.11): the notice must arrive within 60 days after the statement that first showed the error. The bank must investigate within 10 business days, or take up to 45 days (90 days for debit card purchases at a point of sale) if it gives a provisional credit within those 10 business days.
+In DisputeDesk, the check_deadline tool applies these rules with plain code. If a dispute is outside the time limits, the recommendation is deny (filed too late).
+
+3. OUTCOMES DISPUTEDESK CAN RECOMMEND
+file_chargeback – the claim is valid, the evidence supports it, and it is within the time limits.
+deny – the claim is not valid or is outside the time limits. A human analyst always confirms.
+request_more_info – facts are missing that the cardholder can provide.
+escalate – conflicting evidence or high risk, such as friendly-fraud warning signs. A senior analyst reviews.
+
+Sources: Regulation Z and Regulation E text from consumerfinance.gov (U.S. government, public domain). Visa reason code names from Visa's public merchant dispute guidelines, summarized in our own words.
