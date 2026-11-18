@@ -35,18 +35,20 @@ All agents use **GPT-OSS 120B – OpenAI (via Groq)**. This is the only model in
 | `get_merchant_info` | Merchant, refund policy and shipment record | Evidence, Backup |
 | `check_deadline` | Card network and Reg Z / Reg E time limits (plain code) | Compliance, Backup |
 | `recommend_outcome` | The decision rules in plain code: recommendation, 4 checks, evidence | **DisputeDesk supervisor**, Backup |
-| `record_letter_draft` *(once Bob adds it)* | Saves the drafted letter so the dashboard can show it and light up the "Letter" stage | Letter Writer |
+| `record_letter_draft` | Saves the drafted letter so the dashboard can show it and light up the "Letter" stage | Letter Writer |
 
 ## Agents
 
 | Agent | Tools | Knowledge | Collaborators | Instructions file | Status |
 |---|---|---|---|---|---|
-| DisputeDesk Intake Agent | get_dispute, get_transaction | – | – | `instructions_intake.txt` | Live (v1.0.0) |
-| DisputeDesk Evidence Investigator | get_transaction, get_customer_history, get_merchant_info | – | – | `instructions_evidence.txt` | Live (v1.0.0) |
-| DisputeDesk Compliance Agent | check_deadline | "DisputeDesk Card Dispute Rules" | – | `instructions_compliance.txt` | Live (v1.0.0) |
-| DisputeDesk Letter Writer | – (later: record_letter_draft) | – | – | `instructions_letter_writer.txt` | Live (v1.0.0) |
-| **DisputeDesk** (supervisor) | recommend_outcome | – | Intake, Evidence Investigator, Compliance, Letter Writer | `instructions_supervisor.txt` | Built, **to deploy** after re-testing |
+| DisputeDesk Intake Agent | get_dispute, get_transaction | – | – | `instructions_intake.txt` | Live (v1.1.0) |
+| DisputeDesk Evidence Investigator | get_transaction, get_customer_history, get_merchant_info | – | – | `instructions_evidence.txt` | Live (v1.1.0) |
+| DisputeDesk Compliance Agent | check_deadline | "DisputeDesk Card Dispute Rules" | – | `instructions_compliance.txt` | Live (v1.1.0) |
+| DisputeDesk Letter Writer | record_letter_draft | – | – | `instructions_letter_writer.txt` | Live (v1.1.0) |
+| **DisputeDesk** (supervisor) | recommend_outcome | – | Intake, Evidence Investigator, Compliance, Letter Writer | `instructions_supervisor.txt` | Live (v1.0.0) – demos A, B, C and the approve hand-off pass |
 | DisputeDesk Backup | all 6 tools | "DisputeDesk Card Dispute Rules" | Letter Writer | `instructions_backup_single_agent.txt` | **To build** |
+
+**Re-import note (Nov 18):** importing the tools file again adds new copies instead of replacing the old ones. The 6 tools that pointed at the old tunnel address were renamed "OLD – …" and removed from every agent; they can be deleted. After each re-import, swap each agent's tools to the new copies, then deploy again.
 
 **Clean-up:** there is an empty duplicate "DisputeDesk Intake Agent" (0 tools, never deployed). Delete it. When adding collaborators, always pick the Intake Agent that has **2 tools**.
 

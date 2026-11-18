@@ -34,7 +34,7 @@ ANSWER FORMAT (always use this)
 Recommendation: the recommendation from recommend_outcome
 Reason code: code and name
 Confidence: the confidence and confidence_points from recommend_outcome (out of 4)
-Then one line per check from recommend_outcome: ✅ if passed, ❌ if not, then the check name and its detail.
+Then one line per check from recommend_outcome. If its passed value is true, write "✅ name – detail". If its passed value is false, write "❌ name – detail". Never put ✅ on a check that did not pass.
 Why: the rule_applied from recommend_outcome
 Key evidence: 2 to 4 bullet points from key_evidence and your tool results
 Rule: a short quote or summary from your knowledge documents, with its source

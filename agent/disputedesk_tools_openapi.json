@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://belief-sonic-eggs-plaza.trycloudflare.com"
+      "url": "https://marking-varying-valve-pod.trycloudflare.com"
     }
   ],
   "paths": {
@@ -259,10 +259,99 @@
           }
         }
       }
+    },
+    "/tools/disputes/{dispute_id}/letter-draft": {
+      "post": {
+        "summary": "Save a drafted customer letter for analyst review.",
+        "description": "Saves the drafted customer letter so the analyst can review it in the DisputeDesk dashboard. Call once after writing a letter. Nothing is sent to the customer.",
+        "operationId": "record_letter_draft",
+        "parameters": [
+          {
+            "name": "dispute_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispute Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LetterDraftIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LetterDraftResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AuditRow": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "'tool_call' or 'decision'."
+          },
+          "tool": {
+            "type": "string",
+            "title": "Tool",
+            "nullable": true
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage",
+            "nullable": true
+          },
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "nullable": true
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision",
+            "nullable": true
+          },
+          "analyst": {
+            "type": "string",
+            "title": "Analyst",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "type"
+        ],
+        "title": "AuditRow"
+      },
       "BankResponseDeadlines": {
         "properties": {
           "acknowledge_by": {
@@ -294,6 +383,83 @@
           "note"
         ],
         "title": "BankResponseDeadlines"
+      },
+      "CaseSummary": {
+        "properties": {
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id"
+          },
+          "filed_date": {
+            "type": "string",
+            "title": "Filed Date"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "merchant_name": {
+            "type": "string",
+            "title": "Merchant Name"
+          },
+          "amount_usd": {
+            "type": "number",
+            "title": "Amount Usd"
+          },
+          "card_type": {
+            "type": "string",
+            "title": "Card Type"
+          },
+          "days_to_deadline": {
+            "type": "integer",
+            "title": "Days To Deadline",
+            "description": "Days until the 120-day network deadline (may be negative if past)."
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation",
+            "description": "Latest agent recommendation, or 'not_investigated'."
+          },
+          "confidence": {
+            "type": "string",
+            "title": "Confidence",
+            "description": "High/Medium/Low from the last recommendation, or '' if not investigated."
+          }
+        },
+        "type": "object",
+        "required": [
+          "dispute_id",
+          "filed_date",
+          "customer_id",
+          "merchant_name",
+          "amount_usd",
+          "card_type",
+          "days_to_deadline",
+          "recommendation",
+          "confidence"
+        ],
+        "title": "CaseSummary"
+      },
+      "CasesResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseSummary"
+            },
+            "type": "array",
+            "title": "Cases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "cases"
+        ],
+        "title": "CasesResponse"
       },
       "Check": {
         "properties": {
@@ -462,6 +628,82 @@
         ],
         "title": "DeadlineCheckResponse"
       },
+      "DecisionIn": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "title": "Decision",
+            "description": "One of: approve, edit, override."
+          },
+          "final_outcome": {
+            "type": "string",
+            "title": "Final Outcome",
+            "description": "The outcome the analyst chose."
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Required for 'edit' and 'override'.",
+            "nullable": true
+          },
+          "analyst": {
+            "type": "string",
+            "title": "Analyst",
+            "description": "Name or ID of the analyst making the decision."
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "final_outcome",
+          "analyst"
+        ],
+        "title": "DecisionIn"
+      },
+      "DecisionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "final_outcome": {
+            "type": "string",
+            "title": "Final Outcome"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "nullable": true
+          },
+          "analyst": {
+            "type": "string",
+            "title": "Analyst"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "dispute_id",
+          "decision",
+          "final_outcome",
+          "reason",
+          "analyst"
+        ],
+        "title": "DecisionOut"
+      },
       "DisputeResponse": {
         "properties": {
           "dispute_id": {
@@ -511,6 +753,71 @@
           "card_type"
         ],
         "title": "DisputeResponse"
+      },
+      "EvalMatch": {
+        "properties": {
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id"
+          },
+          "expected": {
+            "type": "string",
+            "title": "Expected"
+          },
+          "actual": {
+            "type": "string",
+            "title": "Actual"
+          },
+          "correct": {
+            "type": "boolean",
+            "title": "Correct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dispute_id",
+          "expected",
+          "actual",
+          "correct"
+        ],
+        "title": "EvalMatch"
+      },
+      "EvaluationResponse": {
+        "properties": {
+          "total_cases": {
+            "type": "integer",
+            "title": "Total Cases"
+          },
+          "investigated": {
+            "type": "integer",
+            "title": "Investigated"
+          },
+          "correct": {
+            "type": "integer",
+            "title": "Correct"
+          },
+          "accuracy": {
+            "type": "number",
+            "title": "Accuracy",
+            "description": "Fraction of investigated cases where recommendation matches the answer key."
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/EvalMatch"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_cases",
+          "investigated",
+          "correct",
+          "accuracy",
+          "matches"
+        ],
+        "title": "EvaluationResponse"
       },
       "FraudSignals": {
         "properties": {
@@ -587,6 +894,70 @@
           "database"
         ],
         "title": "HealthResponse"
+      },
+      "LetterDraftIn": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "title": "Outcome",
+            "description": "The dispute outcome this letter covers: file_chargeback, deny, request_more_info or escalate."
+          },
+          "letter_text": {
+            "type": "string",
+            "title": "Letter Text",
+            "description": "The full customer letter text, 100\u2013170 words, addressed to 'Dear Cardholder'."
+          },
+          "chargeback_summary": {
+            "type": "string",
+            "title": "Chargeback Summary",
+            "description": "Bullet-point chargeback summary for the merchant's bank. Required when outcome is file_chargeback, omitted otherwise.",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "letter_text"
+        ],
+        "title": "LetterDraftIn"
+      },
+      "LetterDraftResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Row ID of the saved draft in the letters table."
+          },
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "description": "The dispute the letter was written for."
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts",
+            "description": "ISO-8601 timestamp of when the draft was saved."
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome",
+            "description": "The outcome this letter covers."
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Confirmation that the draft was saved for analyst review."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dispute_id",
+          "ts",
+          "outcome",
+          "message"
+        ],
+        "title": "LetterDraftResponse"
       },
       "MerchantResponse": {
         "properties": {
@@ -820,6 +1191,105 @@
           "proof_of_delivery"
         ],
         "title": "ShipmentRecord"
+      },
+      "StatsResponse": {
+        "properties": {
+          "open_disputes": {
+            "type": "integer",
+            "title": "Open Disputes",
+            "description": "Number of disputes with status 'open'."
+          },
+          "by_card_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Card Type",
+            "description": "Count of open disputes by card type (credit/debit)."
+          },
+          "by_recommendation": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Recommendation",
+            "description": "Count by agent recommendation, including 'not_investigated' for cases the agent has not assessed yet."
+          },
+          "by_reason_code": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Reason Code",
+            "description": "Count by Visa reason code saved from the last recommendation run, plus 'not_investigated'."
+          },
+          "near_deadline": {
+            "type": "integer",
+            "title": "Near Deadline",
+            "description": "Number of open disputes that are within 14 days of the 120-day card network deadline."
+          }
+        },
+        "type": "object",
+        "required": [
+          "open_disputes",
+          "by_card_type",
+          "by_recommendation",
+          "by_reason_code",
+          "near_deadline"
+        ],
+        "title": "StatsResponse"
+      },
+      "ToolCallRow": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "tool": {
+            "type": "string",
+            "title": "Tool"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "dispute_id": {
+            "type": "string",
+            "title": "Dispute Id",
+            "nullable": true
+          },
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id",
+            "nullable": true
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "nullable": true
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "tool",
+          "stage",
+          "dispute_id",
+          "transaction_id",
+          "status_code",
+          "duration_ms"
+        ],
+        "title": "ToolCallRow"
       },
       "TransactionResponse": {
         "properties": {
