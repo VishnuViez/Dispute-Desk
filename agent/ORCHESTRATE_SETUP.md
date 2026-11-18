@@ -1,174 +1,101 @@
-# DisputeDesk in watsonx Orchestrate – Multi-Agent Setup
+# DisputeDesk in watsonx Orchestrate – Setup and Current State
 
-DisputeDesk is one **supervisor** agent that hands work to **four specialist agents**. There is also a **single-agent backup** for demo day. This page has every value to paste and every test to run.
+This page records how DisputeDesk is set up in the team's watsonx Orchestrate trial instance (`ap-south-1.dl.watson-orchestrate.ibm.com`), every value that was pasted in, and how to re-test or rebuild it.
 
-## The team of agents
+## How the pieces connect
 
-| Build order | Agent name | Job | Tools | Knowledge | Instructions file |
+```
+Analyst ── Orchestrate chat ── DisputeDesk (supervisor agent, IBM cloud)
+                                   │ hands work to 4 specialist agents
+                                   │ they call tools listed in agent/disputedesk_tools_openapi.json
+                                   ▼
+               Cloudflare tunnel (https://….trycloudflare.com)
+                                   ▼
+          FastAPI on the team laptop, port 8000 (/tools/*)
+                                   ▼
+          data/disputedesk.db (read-only)  +  data/activity.db (activity log)
+                                   ▲
+   Dashboard in the browser: http://localhost:8000 (/api/*) – no tunnel needed
+```
+
+- The lab's cloud accounts don't support hosting, so the API runs on a laptop. The tunnel lets Orchestrate (in IBM's cloud) reach it.
+- The dashboard is opened at **http://localhost:8000** on the same laptop. Ad blockers sometimes block `trycloudflare.com` addresses in the browser. That only affects viewing through the tunnel, not the agents.
+
+## Model
+
+All agents use **GPT-OSS 120B – OpenAI (via Groq)**. This is the only model in the lab instance: model selection is switched off by the admin, so IBM Granite cannot be chosen. Orchestrate shows a notice that this model is under a third-party license, and the team agreed to use it.
+
+## Tools (from `agent/disputedesk_tools_openapi.json`)
+
+| Tool | What it does | Used by |
+|---|---|---|
+| `get_dispute` | Dispute record and card type | Intake, Backup |
+| `get_transaction` | Transaction, duplicates, subscription dates, refunds | Intake, Evidence, Backup |
+| `get_customer_history` | Purchase history and friendly-fraud signals | Evidence, Backup |
+| `get_merchant_info` | Merchant, refund policy and shipment record | Evidence, Backup |
+| `check_deadline` | Card network and Reg Z / Reg E time limits (plain code) | Compliance, Backup |
+| `recommend_outcome` | The decision rules in plain code: recommendation, 4 checks, evidence | **DisputeDesk supervisor**, Backup |
+| `record_letter_draft` *(once Bob adds it)* | Saves the drafted letter so the dashboard can show it and light up the "Letter" stage | Letter Writer |
+
+## Agents
+
+| Agent | Tools | Knowledge | Collaborators | Instructions file | Status |
 |---|---|---|---|---|---|
-| 1 | DisputeDesk Intake Agent | Classifies the dispute: reason code and key IDs | get_dispute, get_transaction | – | `instructions_intake.txt` |
-| 2 | DisputeDesk Evidence Investigator | Gathers the facts for the reason code | get_transaction, get_customer_history, get_merchant_info | – | `instructions_evidence.txt` |
-| 3 | DisputeDesk Compliance Agent | Checks deadlines and cites the rule | check_deadline | 3 rule files | `instructions_compliance.txt` |
-| 4 | DisputeDesk Letter Writer | Writes the letter after approval | – | – | `instructions_letter_writer.txt` |
-| 5 | **DisputeDesk** (supervisor) | Talks to the analyst, delegates, decides, waits for approval | – (agents 1–4 as collaborators) | – | `instructions_supervisor.txt` |
-| 6 | DisputeDesk Backup | Does everything alone, in case the team misbehaves on demo day | all 5 tools | 3 rule files | `instructions_backup_single_agent.txt` |
+| DisputeDesk Intake Agent | get_dispute, get_transaction | – | – | `instructions_intake.txt` | Live (v1.0.0) |
+| DisputeDesk Evidence Investigator | get_transaction, get_customer_history, get_merchant_info | – | – | `instructions_evidence.txt` | Live (v1.0.0) |
+| DisputeDesk Compliance Agent | check_deadline | "DisputeDesk Card Dispute Rules" | – | `instructions_compliance.txt` | Live (v1.0.0) |
+| DisputeDesk Letter Writer | – (later: record_letter_draft) | – | – | `instructions_letter_writer.txt` | Live (v1.0.0) |
+| **DisputeDesk** (supervisor) | recommend_outcome | – | Intake, Evidence Investigator, Compliance, Letter Writer | `instructions_supervisor.txt` | Built, **to deploy** after re-testing |
+| DisputeDesk Backup | all 6 tools | "DisputeDesk Card Dispute Rules" | Letter Writer | `instructions_backup_single_agent.txt` | **To build** |
 
-Build the specialists before the supervisor. A collaborator must already exist (and be deployed) before you can add it.
+**Clean-up:** there is an empty duplicate "DisputeDesk Intake Agent" (0 tools, never deployed). Delete it. When adding collaborators, always pick the Intake Agent that has **2 tools**.
 
-## Before you start
+**Knowledge "DisputeDesk Card Dispute Rules"** contains three files: `reg_z_1026_13.pdf`, `reg_e_1005_11.pdf` (the two PDFs in `data/rules/`, renamed because the § and | characters cause problems) and `agent/knowledge/disputedesk_card_rules_summary.txt`. Its description:
 
-1. Run the Bob prompt that adds `check_deadline` and `agent/export_openapi.py`.
-2. Start the API and the tunnel, then run the export with the tunnel address:
-   - Terminal 1: `source .venv/bin/activate` then `uvicorn backend.app.main:app --port 8000`
-   - Terminal 2: `cloudflared tunnel --url http://localhost:8000`
-   - Terminal 3: `python agent/export_openapi.py --server-url https://YOUR-ADDRESS.trycloudflare.com`
-3. Check `https://YOUR-ADDRESS.trycloudflare.com/health` in a browser. It should show `"database": "connected"`.
-4. If the knowledge upload rejects the PDF names because of the special characters, rename them to `reg_z_1026_13.pdf` and `reg_e_1005_11.pdf`.
-
-## Steps that are the same for every agent
-
-1. On the Orchestrate home page, click **Create agent** → **Create from scratch**.
-2. Enter the **Name** and **Description** below and click **Create**.
-3. In the agent editor, pick the **Model**. Use an IBM Granite model if one is listed.
-4. If you see an **Agent style** option, leave it on **Default**.
-5. Open `agent/<instructions file>`, select all (⌘A), copy, and paste it into **Behavior → Instructions**.
-6. Add the tools or knowledge listed for that agent. Leave the others empty.
-7. Test it in the **Preview** chat on the right using the tests below. Click **How did I get this response?** to see the tool calls.
-8. Click **Deploy**.
-
-### Adding tools (import once, reuse everywhere)
-
-- **First agent with tools (Intake):** go to **Toolset → Add tool → Add from file or MCP server**, import `agent/disputedesk_tools_openapi.json`, and select **all 5** tools. This saves all 5 in your Orchestrate account. Then remove the tools this agent does not need (keep only get_dispute and get_transaction).
-- **Every later agent:** go to **Toolset → Add tool → Add from local instance**, tick only the tools listed for that agent, and click **Add to agent**.
-- If your screen has a separate **Tools** page in the left menu, you can import the file there once instead.
-
-### Adding knowledge (Compliance Agent and Backup)
-
-Upload these three files and paste the description:
-- `data/rules/` Reg Z 1026.13 PDF
-- `data/rules/` Reg E 1005.11 PDF
-- `agent/knowledge/disputedesk_card_rules_summary.txt`
-
-Knowledge description:
 ```
 Card dispute rules: Regulation Z 1026.13 (credit card billing errors), Regulation E 1005.11 (debit card error resolution) and the DisputeDesk team's own summary of Visa reason codes, required evidence and time limits. Search it to find and cite the rule behind a recommendation.
 ```
 
----
+### Agent descriptions (Orchestrate uses these to route work)
 
-## Agent 1 – DisputeDesk Intake Agent
+- **Intake Agent:** Classifies a card dispute. Given a dispute ID such as DSP-0021, it reads the customer's complaint and the disputed transaction and returns the Visa reason code, the key IDs (transaction, customer, merchant), card type and anything missing. Use it first for every new dispute. It does not check deadlines, gather other evidence or decide outcomes.
+- **Evidence Investigator:** Gathers evidence for a card dispute that has already been classified. Given a transaction_id, customer_id, merchant_id and Visa reason code, it looks up duplicate charges, shipment and delivery records, subscription cancellation dates, refunds and the customer's purchase history (friendly-fraud signals), and reports facts only. Use it after the Intake Agent. It does not check deadlines or decide outcomes.
+- **Compliance Agent:** Checks time limits and rules for a card dispute. Given a dispute ID and Visa reason code, it runs the check_deadline tool (card network 120-day limit, Regulation Z for credit cards, Regulation E for debit cards) and searches the rules knowledge to quote the rule that applies, with its source. Use it once the reason code is known. It does not gather evidence or decide outcomes.
+- **Letter Writer:** Drafts customer letters and chargeback summaries for card disputes after a human analyst has approved the decision. Use it only when DisputeDesk has an approved outcome to communicate.
+- **DisputeDesk (supervisor):** Investigates credit and debit card disputes for bank dispute analysts. Given a dispute ID such as DSP-0021, it coordinates specialist agents to classify the dispute, gather evidence and check deadlines and rules, then recommends file_chargeback, deny, request_more_info or escalate with a confidence score. A human analyst makes every final decision.
+- **DisputeDesk Backup:** the same as the supervisor, ending with "(single-agent backup)".
 
-**Name:** `DisputeDesk Intake Agent`
-
-**Description** (the supervisor reads this to decide when to call it):
-```
-Classifies a card dispute. Given a dispute ID such as DSP-0021, it reads the customer's complaint and the disputed transaction and returns the Visa reason code, the key IDs (transaction, customer, merchant), card type and anything missing. Use it first for every new dispute. It does not check deadlines, gather other evidence or decide outcomes.
-```
-
-**Tools:** get_dispute, get_transaction · **Knowledge:** none · **Instructions:** `instructions_intake.txt`
-
-**Tests:**
-
-| Type in Preview | Expect |
-|---|---|
-| `Classify dispute DSP-0021` | reason_code 12.6.1, transaction TXN-000502, customer CUST-0001, merchant MERCH-001 |
-| `Classify dispute DSP-0046` | reason_code 10.4 |
-| `Classify dispute DSP-0036` | reason_code 13.3, customer_contacted_merchant: no |
-| `Classify dispute DSP-0052` | reason_code N/A, reason_clear: no |
-
-## Agent 2 – DisputeDesk Evidence Investigator
-
-**Name:** `DisputeDesk Evidence Investigator`
-
-**Description:**
-```
-Gathers evidence for a card dispute that has already been classified. Given a transaction_id, customer_id, merchant_id and Visa reason code, it looks up duplicate charges, shipment and delivery records, subscription cancellation dates, refunds and the customer's purchase history (friendly-fraud signals), and reports facts only. Use it after the Intake Agent. It does not check deadlines or decide outcomes.
-```
-
-**Tools:** get_transaction, get_customer_history, get_merchant_info · **Knowledge:** none · **Instructions:** `instructions_evidence.txt`
-
-**Tests:**
-
-| Type in Preview | Expect |
-|---|---|
-| `Gather evidence: transaction TXN-000502, customer CUST-0001, merchant MERCH-001, reason code 12.6.1` | one duplicate about 2 minutes apart |
-| `Gather evidence: transaction TXN-000531, customer CUST-0024, merchant MERCH-009, reason code 10.4` | prior_undisputed_with_merchant 3, same device 3, same address 3 |
-| `Gather evidence: transaction TXN-000512, customer CUST-0008, merchant MERCH-010, reason code 13.1` | proof_of_delivery true |
-| `Gather evidence: transaction TXN-000523, customer CUST-0019, merchant MERCH-008, reason code 13.6` | a refund is listed |
-
-## Agent 3 – DisputeDesk Compliance Agent
-
-**Name:** `DisputeDesk Compliance Agent`
-
-**Description:**
-```
-Checks time limits and rules for a card dispute. Given a dispute ID and Visa reason code, it runs the check_deadline tool (card network 120-day limit, Regulation Z for credit cards, Regulation E for debit cards) and searches the rules knowledge to quote the rule that applies, with its source. Use it once the reason code is known. It does not gather evidence or decide outcomes.
-```
-
-**Tools:** check_deadline · **Knowledge:** the 3 rule files (see above) · **Instructions:** `instructions_compliance.txt`
-
-**Tests:**
-
-| Type in Preview | Expect |
-|---|---|
-| `Check deadlines for dispute DSP-0049, reason code 13.1` | within_time_limits: no, with a time-limit rule cited |
-| `Check deadlines for dispute DSP-0029, reason code 13.1` | too_early: yes |
-| `Check deadlines for dispute DSP-0021, reason code 12.6.1` | within_time_limits: yes, regulation Reg Z |
-
-## Agent 4 – DisputeDesk Letter Writer
-
-**Name:** `DisputeDesk Letter Writer`
-
-**Description:**
-```
-Drafts customer letters and chargeback summaries for card disputes after a human analyst has approved the decision. Use it only when DisputeDesk has an approved outcome to communicate.
-```
-
-**Tools:** none · **Knowledge:** none · **Instructions:** `instructions_letter_writer.txt`
-
-**Test:** `Write the letter. Dispute DSP-0021, outcome file_chargeback, reason code 12.6.1, facts: two $6.50 charges at Bramble & Bean Coffee on 2026-10-01, 2 minutes apart.` Expect a letter signed "Card Disputes Team" plus a chargeback summary.
-
-## Agent 5 – DisputeDesk (supervisor)
-
-**Name:** `DisputeDesk`
-
-**Description:**
-```
-Investigates credit and debit card disputes for bank dispute analysts. Given a dispute ID such as DSP-0021, it coordinates specialist agents to classify the dispute, gather evidence and check deadlines and rules, then recommends file_chargeback, deny, request_more_info or escalate with a confidence score. A human analyst makes every final decision.
-```
-
-**Tools:** none · **Knowledge:** none · **Instructions:** `instructions_supervisor.txt`
-
-**Collaborators:** go to **Toolset → Agents → Add agent → Add from local instance**, tick all four specialists (Intake Agent, Evidence Investigator, Compliance Agent, Letter Writer), and click **Add to agent**.
-
-**Welcome message:**
-```
-Hi, I'm DisputeDesk. Give me a dispute ID (like DSP-0021) and my team of specialist agents will investigate it and recommend what to do. You make the final decision.
-```
-
+**Supervisor welcome message:** "Hi, I'm DisputeDesk. Give me a dispute ID (like DSP-0021) and my team of specialist agents will investigate it and recommend what to do. You make the final decision."
 **Starter prompts:** `Investigate dispute DSP-0021` · `Investigate dispute DSP-0046` · `Investigate dispute DSP-0049`
 
-**Model note:** if the supervisor skips specialists or calls them in the wrong order, try a larger model for the supervisor only. Keep Granite on the specialists, and write down which models you used for the technology statement.
+## What we learned while testing (already in the instruction files)
 
-**Tests:** run the full checklist below. "How did I get this response?" should show Intake → Evidence Investigator → Compliance.
+- The supervisor model did not apply a long list of decision rules reliably (demo B came back as file_chargeback, then request_more_info, instead of escalate). The decision rules were therefore moved into plain code (`recommend_outcome`). The supervisor and the backup now present its result exactly.
+- The Evidence Investigator first said "history fits the claim" for demo B. A "MEANING OF history_fits_claim" section fixed it.
+- The Letter Writer first labelled the dispute ID as a transaction ID and disputed both coffee charges. Two rules fixed it: label IDs correctly, and dispute only the duplicate.
+- The supervisor first replied "Letter Sent" without showing the letter. It must now copy the draft under "Draft letter for your review" and never say a letter was sent.
 
-## Agent 6 – DisputeDesk Backup (single agent)
+## How to deploy an agent (Orchestrate UI)
 
-**Name:** `DisputeDesk Backup`
+1. Open the agent → **Deploy** (top bar) → **Deploy to Live**.
+2. **Create new version**: enter a name (for example `v2 recommend_outcome`) and a number (for example `1.1.0`) → **Create**.
+3. Select the version → **Deploy**. Check the pre-deployment summary (tools and collaborators) → **Deploy**.
+4. A deployed agent keeps a snapshot of its tools and collaborators. After changing them, deploy again.
 
-**Description:** the same as the supervisor's, ending with "(single-agent backup)".
+## When the tunnel address changes (every time cloudflared restarts)
 
-**Tools:** all 5 · **Knowledge:** the 3 rule files · **Collaborators:** DisputeDesk Letter Writer · **Instructions:** `instructions_backup_single_agent.txt`
+1. Start the API: `uvicorn backend.app.main:app --port 8000` (from the repo folder, with `.venv` active).
+2. Start the tunnel: `cloudflared tunnel --url http://localhost:8000`, and copy the new `https://….trycloudflare.com` address.
+3. Re-export: `python agent/export_openapi.py --server-url https://NEW-ADDRESS.trycloudflare.com`
+4. In Orchestrate, import `agent/disputedesk_tools_openapi.json` again (Toolset → Add tool → OpenAPI) so every tool uses the new address. Then check each agent still has its tools, and deploy again.
 
-Run the same checklist. If the supervisor team misbehaves on demo day, use this one.
+To avoid this before the demo, keep the tunnel window open from testing through recording the video.
 
----
+## Test checklist (supervisor and backup)
 
-## Full test checklist (supervisor and backup)
+Type `Investigate dispute <ID>` in the agent's chat. "Show reasoning" should show Intake → Evidence Investigator → Compliance → recommend_outcome.
 
-Type `Investigate dispute <ID>`.
-
-| Dispute | What it tests | Expected recommendation | Reason code |
+| Dispute | What it tests | Expected | Reason code |
 |---|---|---|---|
 | DSP-0021 | Demo A – charged twice, 2 minutes apart | file_chargeback | 12.6.1 |
 | DSP-0046 | Demo B – $340 order, 3 earlier orders with same device and address | escalate | 10.4 |
@@ -182,13 +109,10 @@ Type `Investigate dispute <ID>`.
 | DSP-0040 | New device and new address, no history | file_chargeback | 10.4 |
 | DSP-0052 | Vague complaint, forgotten subscription | request_more_info | N/A |
 
-**Hand-off test:** after DSP-0021, reply `approve`. The Letter Writer's letter should appear.
+**Hand-off test:** after DSP-0021, reply `approve`. The answer must show "Draft letter for your review" with the letter and a chargeback summary for TXN-000502 ($6.50 only).
 
-The answer key for all 30 cases is in `data/cases.csv`.
+**Full accuracy run:** run all 30 disputes (DSP-0021 to DSP-0052, from `data/cases.csv`) through the supervisor. Every `recommend_outcome` call is saved, so `GET /api/evaluation` and the dashboard's accuracy card show the agents' score against the answer key automatically.
 
-## If something goes wrong
+## Optional: chat inside the dashboard
 
-- **Tool calls fail or time out.** Check that `uvicorn` and `cloudflared` are both running. A new tunnel gets a new address, so re-run the export and import the tools again.
-- **The supervisor answers without asking its specialists.** Check that all four are listed under Toolset → Agents and that each one is deployed. Then try a larger model for the supervisor.
-- **A specialist returns the wrong format.** Test that specialist alone in its own Preview and fix its instructions first.
-- **"Not found" errors.** Only DSP-0021 to DSP-0052 are open test cases.
+In Orchestrate, open the supervisor → **Deploy** → Channels → **Embedded agent** to get a code snippet that embeds the DisputeDesk chat in a web page. It may require security settings. Until then, the dashboard's "Investigate with DisputeDesk" button opens the Orchestrate chat in a new tab.
