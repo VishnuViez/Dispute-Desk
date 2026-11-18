@@ -10,7 +10,7 @@ Covers:
 - GET /api/activity  (and that a /tools call creates a row)
 - GET /api/audit
 - GET /api/evaluation
-- export_openapi still exports only the 6 /tools operations
+- export_openapi still exports only the 7 /tools operations
 """
 
 from __future__ import annotations
@@ -344,7 +344,7 @@ class TestEvaluation:
 
 
 # ---------------------------------------------------------------------------
-# 8. export_openapi still exports only the 6 /tools operations
+# 8. export_openapi still exports only the 7 /tools operations
 # ---------------------------------------------------------------------------
 
 class TestExportStillClean:

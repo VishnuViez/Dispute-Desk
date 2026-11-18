@@ -30,6 +30,7 @@ EXPECTED_TOOLS = {
     "get_merchant_info",
     "check_deadline",
     "recommend_outcome",
+    "record_letter_draft",
 }
 NULL = {"type": "null"}
 

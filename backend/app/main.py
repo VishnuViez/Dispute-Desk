@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.db import get_db
 from backend.app.middleware import ActivityLogMiddleware
 from backend.app.models import HealthResponse
-from backend.app.routers import api, deadline, recommendation, tools
+from backend.app.routers import api, deadline, letter, recommendation, tools
 
 _UI_DIR = Path(__file__).resolve().parents[2] / "ui"
 
@@ -34,6 +34,7 @@ app.add_middleware(ActivityLogMiddleware)
 app.include_router(tools.router, prefix="/tools")
 app.include_router(deadline.router, prefix="/tools")
 app.include_router(recommendation.router, prefix="/tools")
+app.include_router(letter.router, prefix="/tools")
 
 # Dashboard API – NOT under /tools so Orchestrate never sees it.
 app.include_router(api.router, prefix="/api")

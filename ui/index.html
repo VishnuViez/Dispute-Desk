@@ -586,6 +586,7 @@ function backToQueue() {
 function renderDetail(d) {
   const dis = d.dispute, txn = d.transaction, sh = d.shipment;
   const rec = d.recommendation, dl = d.deadline, sigs = d.friendly_fraud_signals;
+  const ld = d.letter_draft;
 
   // ── Deadline timeline ──────────────────────────────────────────
   let timelineHtml = '';
@@ -751,6 +752,17 @@ function renderDetail(d) {
         ${decHtml}
       </div>
     </div>
+
+    ${ld ? `
+    <div class="detail-grid full">
+      <div class="card">
+        <h3>Draft Letter for Review</h3>
+        <div class="kv"><span class="k">Outcome</span><span class="v">${recBadge(ld.outcome)}</span></div>
+        <div class="kv"><span class="k">Saved</span><span class="v">${fmtTs(ld.ts)}</span></div>
+        <div style="margin-top:.7rem;white-space:pre-wrap;font-size:.82rem;border:1px solid var(--border);border-radius:var(--radius);padding:.8rem;background:#fffbeb">${ld.letter_text}</div>
+        ${ld.chargeback_summary ? `<div style="margin-top:.6rem"><strong style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Chargeback Summary</strong><div style="margin-top:.3rem;white-space:pre-wrap;font-size:.82rem;border:1px solid var(--border);border-radius:var(--radius);padding:.8rem;background:#f0fdf4">${ld.chargeback_summary}</div></div>` : ''}
+      </div>
+    </div>` : ''}
   `;
 }
 

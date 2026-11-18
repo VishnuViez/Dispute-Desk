@@ -36,6 +36,7 @@ _STAGE = {
     "get_merchant_info": "Evidence",
     "check_deadline": "Compliance",
     "recommend_outcome": "Decision",
+    "record_letter_draft": "Letter",
 }
 
 
@@ -425,6 +426,13 @@ def case_detail(
             ).fetchall()
         ]
 
+        # Latest letter draft (may be None if the Letter Writer hasn't run yet)
+        # Order by id DESC (autoincrement) so the last inserted row is always returned.
+        letter_row = aconn.execute(
+            "SELECT * FROM letters WHERE dispute_id = ? ORDER BY id DESC LIMIT 1",
+            (dispute_id,),
+        ).fetchone()
+
         return {
             "dispute": dict(dispute),
             "transaction": dict(txn),
@@ -435,6 +443,7 @@ def case_detail(
             "deadline": deadline_info,
             "recommendation": dict(saved_rec) if saved_rec else None,
             "decisions": decisions,
+            "letter_draft": dict(letter_row) if letter_row else None,
         }
     finally:
         aconn.close()

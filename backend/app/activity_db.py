@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS decisions (
     reason       TEXT,
     analyst      TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS letters (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    dispute_id          TEXT NOT NULL,
+    ts                  TEXT NOT NULL,
+    outcome             TEXT NOT NULL,
+    letter_text         TEXT NOT NULL,
+    chargeback_summary  TEXT             -- NULL when outcome is not file_chargeback
+);
 """
 
 
