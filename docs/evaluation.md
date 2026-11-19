@@ -32,13 +32,13 @@ Alternatively, open the dashboard at `http://localhost:8000` and check the "Agen
 
 ### Results
 
-> **[to fill after evaluation run]**
+Run on 18 Nov 2026: all 30 disputes through the live DisputeDesk supervisor, one new chat per case, no corrections. The agents also chose the correct Visa reason code in 30 of 30 cases.
 
 | Metric | Value |
 |---|---|
-| Total cases run | [to fill] |
-| Correct | [to fill] |
-| Accuracy | [to fill] |
+| Total cases run | 30 |
+| Correct | 30 |
+| Accuracy | 100% |
 
 See `docs/evaluation_results.md` for the per-case breakdown.
 

@@ -40,7 +40,7 @@ The transaction is about 150 days before the filing date, which is past the 120-
 ## Results
 
 - Backend recommendation accuracy against the 30-case answer key: **30/30** (verified by `pytest backend/tests/test_recommendation.py`).
-- End-to-end agent accuracy through watsonx Orchestrate: **[to fill after evaluation run]**.
+- End-to-end agent accuracy through watsonx Orchestrate: **30/30 (100%)** on 18 Nov 2026, with the correct Visa reason code in 30/30 cases (see `docs/evaluation_results.md`).
 - Average case investigation time with DisputeDesk vs without: **[to fill after timed comparison]**.
 
 ## What DisputeDesk does not do

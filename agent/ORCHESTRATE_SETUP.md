@@ -46,7 +46,7 @@ All agents use **GPT-OSS 120B – OpenAI (via Groq)**. This is the only model in
 | DisputeDesk Compliance Agent | check_deadline | "DisputeDesk Card Dispute Rules" | – | `instructions_compliance.txt` | Live (v1.1.0) |
 | DisputeDesk Letter Writer | record_letter_draft | – | – | `instructions_letter_writer.txt` | Live (v1.1.0) |
 | **DisputeDesk** (supervisor) | recommend_outcome | – | Intake, Evidence Investigator, Compliance, Letter Writer | `instructions_supervisor.txt` | Live (v1.0.0) – demos A, B, C and the approve hand-off pass |
-| DisputeDesk Backup | all 6 tools | "DisputeDesk Card Dispute Rules" | Letter Writer | `instructions_backup_single_agent.txt` | **To build** |
+| DisputeDesk Backup | get_dispute, get_transaction, get_customer_history, get_merchant_info, check_deadline, recommend_outcome | "DisputeDesk Card Dispute Rules" | Letter Writer | `instructions_backup_single_agent.txt` | Live (v1.0.0) – demo B tested |
 
 **Re-import note (Nov 18):** importing the tools file again adds new copies instead of replacing the old ones. The 6 tools that pointed at the old tunnel address were renamed "OLD – …" and removed from every agent; they can be deleted. After each re-import, swap each agent's tools to the new copies, then deploy again.
 
@@ -65,7 +65,7 @@ Card dispute rules: Regulation Z 1026.13 (credit card billing errors), Regulatio
 - **Compliance Agent:** Checks time limits and rules for a card dispute. Given a dispute ID and Visa reason code, it runs the check_deadline tool (card network 120-day limit, Regulation Z for credit cards, Regulation E for debit cards) and searches the rules knowledge to quote the rule that applies, with its source. Use it once the reason code is known. It does not gather evidence or decide outcomes.
 - **Letter Writer:** Drafts customer letters and chargeback summaries for card disputes after a human analyst has approved the decision. Use it only when DisputeDesk has an approved outcome to communicate.
 - **DisputeDesk (supervisor):** Investigates credit and debit card disputes for bank dispute analysts. Given a dispute ID such as DSP-0021, it coordinates specialist agents to classify the dispute, gather evidence and check deadlines and rules, then recommends file_chargeback, deny, request_more_info or escalate with a confidence score. A human analyst makes every final decision.
-- **DisputeDesk Backup:** the same as the supervisor, ending with "(single-agent backup)".
+- **DisputeDesk Backup:** Single-agent backup for DisputeDesk. Investigates credit and debit card disputes for bank dispute analysts. Given a dispute ID such as DSP-0021, it uses its own tools to classify the dispute, gather evidence and check deadlines and rules, then recommends file_chargeback, deny, request_more_info or escalate with a confidence score. A human analyst makes every final decision.
 
 **Supervisor welcome message:** "Hi, I'm DisputeDesk. Give me a dispute ID (like DSP-0021) and my team of specialist agents will investigate it and recommend what to do. You make the final decision."
 **Starter prompts:** `Investigate dispute DSP-0021` · `Investigate dispute DSP-0046` · `Investigate dispute DSP-0049`
